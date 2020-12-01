@@ -2,3 +2,5 @@ To download all files for selected cosqm from Martin Aubé's home server:
 
 In bash terminal (example for santa-cruz cosqm):
 wget -r -A .txt --no-parent http://dome.obsand.org:2080/DATA/CoSQM-Network/Santa-Cruz_Tenerife/data/
+
+To only download a specific extension, add flag: -A fileextension
