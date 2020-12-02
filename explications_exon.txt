@@ -1,0 +1,96 @@
+fig 2 
+D est le discriminateur, Patch GAN (prédiction par patch) avec champ de vision 70x70 qui laisse des artéfacts de la taille de la patch dans l'image finale (mais il y a peut etre plein de filtres en plus qui peuvent alourdir le code). Exon a remplacé par un U-net avec champ de vision 1x1 (down scale et upscale avec skip connection, donc une prédiction par pixel). Ça prend environ le double de temps, mais si on choisi un U-Net assez petit, on peut se rapporcher du même temps de calcul avec une meilleure précision finale.
+
+Dans la même figure, la perceptual loss a été choisie à mean-absolute error ((output-input)²) ^1/2)
+
+Residual block: chaque layer additionne le output précédent pour le garder en mémoire pour la fin. (x_1=f(x_0)+x_0)
+
+
+ds_models:
+
+encoder_block -> convolution, extrait feature map, pool
+(fait 3x ici (2³=8).
+
+downscale l'image pour extraire la feature map de dimension x y minimales, mais à channels maximaux.
+
+Retourne une skip connection (c est l'image initiale, c_skip est plein de feature maps convolutionnés ensembles)
+
+Encoder plusieurs fois en chaîne fait perdre de l'info, donc on peut finir avec un résultat qui s'éloigne de l'info initiale (la loss ne considère pas toutes les layers de l'algo aka chute du gradient). Pour ne pas trop s'éloigner, on garde des skip connection.
+
+avantages: 
+1. éviter la chute du gradient (donc un neurone qui est à 0 empêche les autres avant lui d'être considérés ou modifiés). 
+2. plus tard, on concatène la skip connection et le décodage qui devrait donner l'identité ce qui permet de comparer la prédiction à ce qu'on devrait avoir (exemple prédiction de formes, il y aura les bonnes formes à la fin si l'algo peut comparer avec ce qu'il avait en input, donc ce qu'il doit prédire ou segmenter).
+
+
+bottleneck_block -> padd, dilate pour garder le nombre de filtres petit.
+
+ Si on diminu trop, on doit augmenter les features ce qui rend l'algo très lourd (augmente le nombre de params). Donc on fait une convolution dilatée pour augmenter le FOV de la fenêtre de convolution sur l'image à taille diminuée. On compense la taille de l'image avec la taille de la fenêtre de convolution.
+
+avantage: plus rgand FOV sans augmenter le nombre de paramètres
+désavantage: 
+
+
+
+Add: une skip connection de chaque étape antérieure (dilatation 1,2,4,8). On somme les features extraits à chaque layer. C'est une addition matricielle, pixel à pixel.
+
+Dropout: conventionnel au réseaux de neurones, annuler des features (réduire le poids de calcul). Maintenant breuveté par Google. Permet de ne pas overfitter trop rapidement.
+
+Activation: remap ce que le dropout a retourné (transfo ReLu (sous 0 est 0 et linéaire x=x au dessus)). Toutefois, tout n'est pas linéaire donc c'est surement pas le best. Mais: série de Taylor infinie permet de décrire tout, mais on simplifie: à la fin en classification on ajoute une seule non-linéarité (au début de la loss donc à la fin du réseau). aka hyperparamètre.
+
+Batch normalization: renormalizer entre 0 et 1 toutes les valeurs. (pas nécessairement la meilleure méthode si on a plusieurs channels qui n'ont pas le même ordre de grandeur de signal, on tue notre signal sur un channel s'il est négligeable devant un autre, mais pas devant lui-même).
+
+
+
+Decoder block (skip connection ca se passe ici): layer in arrive d'en bas du U-net, il est plus petit donc on doit upsample 2d pour avoir la meme taille que le skip (encodage) de gauche dans le U. On fini en concatenant les deux ensemble.
+
+*if dropout: on dropout au début du réseau mais pas à la fin pour pouvoir garder les features finaux qui sont supposés être mieux spécifiés à la fin.
+
+
+define_unet_discriminator:
+
+(# define attention block devrait etre define unet ou discriminator)
+
+Boucle pour exécuter tout l'algo.
+
+
+define_aNet:
+
+Un encodeur pour deux décodeurs -> encodeur nous donne les features map, de là un décodeur transforme le cheval en zèbre et l'autre décodeur prédit un masque de pixels de la position du cheval dans l'image.
+ (attention decoder block est un réseau de neurones qui crée un masque (0,1 de présence))
+ (generator decoder block tranforme pixel à pixel. seulement 2 decoder_block car en créant une nouvelle image avec un GAN (causé par artéfact Unet) on est mieux de retirer la skip connection du dernier décodeur)
+
+ *out_gen-> c_activation est un tanh, prouvé que c'est mieux pour dessiner.  
+
+ fuse predictions: gen_id_out, gen_out, = (1-attention )* (img_orig) + attention*prediction
+
+ : floats qui améliorent la convergence comparés aux int. La propagation est optimisée selon la précision de la variable.
+
+ in_image: img_orig, out_image: resultat fuse_predictions, out_gen: generateur de zebres partout, out_attn: masque, grid sigmoid de présence entre 0 et 1
+
+ cyclegan: prédire un zèbre mais doit revenir à un cheval après, qui confirme qu'il a bien compris.. peu probable, chaos
+
+d_out: discriminateur , si la prédiction est vraie ou non 
+id=identité
+
+gen_id_out: identité ciel en ciel  
+unet_out: prédiction du raw générateur (pas multiplié par le masque
+out_id_attention,)
+atnn_id_out: masque 0-1 taille du input en un channel float, 
+
+d_model: discriminator, dis si l'image est vraie ou non
+
+
+---------
+
+
+ds_train
+--------
+
+
+entraîné en 2 temps: 
+- entraîner à déterminer si c'est une image originale ou générée
+	- donc ca prend une image, et souvent plein d'images avant de fonctionner. 
+- entraîner un générateur à dessiner avec toutes les prédictions cheval -> zebre (attention, descente de gradient, encodeur)
+
+on joue avec les paramètres pour optimiser le pourcentage de réussite de prédiction. 
+
