@@ -2,12 +2,16 @@ import numpy as np
 #from matplotlib.dates import datestr2num
 import matplotlib.pyplot as plt
 from datetime import datetime as dt
+from datetime import timezone
 import pandas as pd
+from glob import glob
+from skyfield.api import load, Topos
 
+##############################################################################
+#Function definitions
+#############################
 
-#%% Function definitions
-print("COSQM Data load function, returns data and dates in tuple")
-
+#COSQM Data load function, returns data and dates in tuple
 def LoadData(path,cache={}):
     print (path)
     if path in cache:
@@ -23,89 +27,165 @@ def LoadData(path,cache={}):
             print('********error*********', path)
 
 
-print("COSQM Data cloud correction")
-print("puts  = 0 cosqm value if clouds present, detected by variance higher than threshold on timely adjacent measurement values")
-
-def CloudCorr(cosqm_array, threshold, idx, idx_range):
-    #check if data is at start or end of cosqm data, and correct range
-    if idx<idx_range:
-        left = 0
-        right = idx_range
-    elif idx>len(cosqm_array)-idx_range-1:
-        left = idx_range
-        right = 0
-    else:
-        left = int(idx_range/2)
-        right = int(idx_range/2)
-
-    #calculate variance of adjacent values
-    var_val = np.var(cosqm_array[idx-left:idx+right])
-
-    #put  = 0 if var bigger than threshold (clouds give a variance of approx 0.05mag)
-    return 0 if var_val>threshold else cosqm_array[idx]
-
-
-print("FIND CLOSEST TIME VALUES FROM AOD TO COSQM")
-
-print("Define path from month and day of measurement on AOD")
-def FindClosest(dates_aod,index):
-    #define paths
+#FIND CLOSEST TIME VALUES FROM AOD TO COSQM
+#Define path from month and day of measurement on AOD
+def FindClosest(dates_aod,index,path_in):
+    # define paths
     date = dt.fromtimestamp(dates_aod[index])
     date = dict(y = date.year, m = date.month, d = date.day)
-    path = r'cosqm_izana/data/%(y)d/%(m)02d/%(y)d-%(m)02d-%(d)02d.txt' % date
+    path = path_in+r'/data/%(y)d/%(m)02d/%(y)d-%(m)02d-%(d)02d.txt' % date
 
-    #Download data from this day (night)
-    #try:
-    data,dates_cosqm = LoadData(path)
+    # Download data from this day (night)
+    try:
+    	data,dates_cosqm = LoadData(path)
 
-    #find nearest time value for cosqm corresponding to aod measurement
-    idx = np.abs(dates_cosqm-dates_aod[index]).argmin()
-    delta_t = dates_cosqm[idx]-dates_aod[index]
 
-    #except:
-    #    delta_t = 1001
+    	# find nearest time value for cosqm corresponding to aod measurement
+    	idx = np.abs(dates_cosqm-dates_aod[index]).argmin()
+    	delta_t = dates_cosqm[idx]-dates_aod[index]
 
-    #correct for errors of time matching (range of 1000 difference to trigger)
+    except:
+        delta_t = 1001
+
+    # correct for errors of time matching (range of 1000 difference to trigger)
     if -1000<delta_t<1000:
         cosqm_value1 = data[idx]
         cosqm_value2 = np.copy(cosqm_value1)
 
-        #Cloud correction
-        for i in range(5):
-            cosqm_value2[i] = CloudCorr(data[:,6+i],0.005,idx,40)
+        # Cloud correction
+        #for i in range(5):
+            #cosqm_value2[i] = CloudCorr(data[:,6+i],0.005,idx,40)
     else:
         cosqm_value2 = np.zeros(15)
 
     return cosqm_value2, delta_t
 
-#%%---------------------
-#################
-#################
-#
-#       COSQM DATA
-#   Variation as a function of whole year, day of week, month and season
-#
-#   Data taken from Martin Aubé's server:
-#################
-#################
+#Moon presence data reduction function and variables
+ts = load.timescale()
+planets = load('de421.bsp')
+earth,moon,sun = planets['earth'],planets['moon'],planets['sun']
 
-#%% COSQM SANTA CRUZ
-from glob import glob
+# Define variables for locations
+izana_loc = earth + Topos('28.300398N', '16.512252W')
+santa_loc = earth + Topos('28.472412500N', '16.247361500W')
 
-path_santa='/Users/admin/Documents/physique/Maitrise/hiver_2020/cosqm_aod/aod/cosqm_santa_cruz/data/'
+# !! Time objects from dt need a timezone (aware dt object) to work with skyfield lib
+# ex.: time = dt.now(timezone.utc), with an import of datetime.timezone
+def MoonAngle(timestamp, location):
+    datetime = dt.fromtimestamp(timestamp, timezone.utc)
+    t = ts.from_datetime(datetime)
+    astrometric = location.at(t).observe(moon)
+    alt, _, _ = astrometric.apparent().altaz()
+    return alt.degrees
+
+def SunAngle(timestamp, location):
+    datetime = dt.fromtimestamp(timestamp, timezone.utc)
+    t = ts.from_datetime(datetime)
+    astrometric = location.at(t).observe(sun)
+    alt, _, _ = astrometric.apparent().altaz()
+    return alt.degrees
+
+
+
+##############################################################################
+#COSQM DATA
+#Variation as a function of whole year, day of week, month and season
+#Data taken from Martin Aubé's server: http://dome.obsand.org:2080/DATA/CoSQM-Network/
+#
+#Data format: Date(YYYY-MM-DD), time(HH:MM:SS),
+#             Latitude, Longitude, Elevation, SQM temperature, integration time, 
+#             C(mag), R(mag), G(mag), B(mag), Y(mag),
+#             C(watt),R(watt),G(watt),B(watt),Y(watt)  
+#############################
+
+#COSQM SANTA CRUZ
+path_santa='cosqm_santa/data/'
 
 #find all paths of files in root directory
-paths_santa=sorted(glob(path_santa+"*/*/*.txt"))
+paths_santa=sorted(glob(path_santa+"2019/*/*.txt"))
 
 files=np.array([LoadData(path) for path in paths_santa])
 cosqm_santa=np.concatenate(files[:,0])
 dates_santa=np.concatenate(files[:,1])
+dt_santa=np.array([dt.fromtimestamp(date) for date in dates_santa])
 
-dt_santa=[dt.fromtimestamp(date) for date in dates_santa]
+#Remove zeros from cosqm measurements (bugs from instruments)
+zeros_mask = np.ones(cosqm_santa.shape[0], dtype=bool)
+for i in range(5,10):
+	zeros_mask[np.where(cosqm_santa[:,i]==0)[0]]=False
+cosqm_santa = cosqm_santa[zeros_mask]
+dates_santa = dates_santa[zeros_mask]
+dt_santa = dt_santa[zeros_mask]
 
-#%% COSQM TEIDE ***BUG IN COSQM DATA FROM WGET COMMAND***
-import pandas as pd
+# Compute moon angles for each timestamp in COSQM data
+# WARNING: LONG CALCULATION TIME! (10+ minutes for 80k points)
+dates = dates_santa
+#moon_angles = np.array([MoonAngle(time, santa_loc) for time in dates])
+#np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce ulterior computing time
+moon_angles = np.loadtxt('cosqm_santa_moon_angles.txt')					#Load already computed angles
 
+# Mask values for higher angle than -18deg (astro twilight)
+moon_mask = np.ones(dates.shape[0], bool)
+moon_mask[np.where(moon_angles>-18)[0]] = False
+
+dates_moon = dates[moon_mask]
+cosqm_santa_moon = cosqm_santa[:,5:10][moon_mask]
+dt_santa_moon = dt_santa[moon_mask]
+#dates_days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(dates[0])).days+1 for date in dates])
+
+#sun_angles = np.array([SunAngle(time, santa_loc) for time in dates_moon])
+#np.savetxt('cosqm_santa_sun_angles.txt', sun_angles)
+sun_angles = np.loadtxt('cosqm_santa_sun_angles.txt')					#Load already computed angles
+
+sun_mask = np.ones(dates_moon.shape[0], bool)
+sun_mask[np.where(sun_angles>-18)[0]] = False
+
+dates_moon_sun = dates_moon[sun_mask]
+cosqm_santa_moon_sun = cosqm_santa_moon[sun_mask]
+dt_santa_moon_sun = dt_santa_moon[sun_mask]
+
+
+
+# Cloud removal from visual analysis: thumbnails are checked in a file browser and a folder is created with the clear
+# skies data. The filename is of format YYYY-MM-DD_HH/MM/SS.jpg
+######
+# WARNING: filenames have SLASHES or colons, which can't be read in Microsoft Windows. You must use unix to replace / or : with _ in filenames so that
+# the code works in Windows. The following 2 lines must be ran in unix in the folder showing the years of measurements.
+#fnames = glob('*/*/webcam/*.jpg')
+#[os.rename(fname, fname[:28]+''+fname[29:31]+''+fname[32:]) for fname in fnames]
+######
+
+dates_str = np.array(glob('cosqm_santa/data/2019/*/webcam/*.jpg'))
+santa_clouds_dates = np.array([ dt.strptime( date[-21:-4], '%Y-%m-%d_%H%M%S' ).timestamp() for date in dates_str ])
+santa_clouds_days = np.array([ dt.strptime( date[-21:-11], '%Y-%m-%d' ).timestamp() for date in dates_str ])
+
+# Plot histogram of occurence of no cloud images per day in timestamps
+plt.hist(santa_clouds_days,(dt.fromtimestamp(santa_clouds_dates[-1])-dt.fromtimestamp(santa_clouds_dates[0])).days+1)
+clouds_hist, clouds_days = np.histogram(santa_clouds_days,(dt.fromtimestamp(santa_clouds_dates[-1])-dt.fromtimestamp(santa_clouds_dates[0])).days+1)
+noclouds = clouds_days[np.nonzero(clouds_hist)]
+
+# Find days that are present in the no-clouds filenames
+days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(santa_clouds_dates[0])).days+1 for date in santa_clouds_dates])
+
+# Mask days that were clouded
+cloud_mask = np.ones(days_since_start.shape[0], dtype=bool)
+cloud_mask[np.where(days_since_start.reshape(days_since_start.size, 1) != noclouds)[1]] = False
+santa_clouds_days = santa_clouds_days[cloud_mask]
+
+# Mask cosqm_data for clouded days
+
+cloud_data_mask = np.ones(cosqm_santa.shape[0], dtype=bool)
+cloud_data_mask[np.where(dates_days_since_start.reshape(dates_days_since_start.size, 1) != noclouds)[1]] = False
+dates = dates[cloud_data_mask]
+cosqm_santa = cosqm_santa[cloud_data_mask]
+
+###########################
+
+# Load AERONET data from corresponding site
+
+
+
+#COSQM TEIDE ***BUG IN COSQM DATA FROM WGET COMMAND***
 def LoadDataCorrupt(path,cache={}):
     print (path)
     if path in cache:
@@ -136,8 +216,7 @@ cosqm_teide=np.concatenate(files1[:,0])
 dates_teide=cosqm_teide[:,-1]
 dt_teide=[dt.fromtimestamp(date) for date in dates_teide]
 
-#%% COSQM IZANA AEMET  ***BUG IN COSQM DATA FROM WGET COMMAND***
-
+#COSQM IZANA AEMET
 path_izana='/Users/admin/Documents/physique/Maitrise/hiver_2020/cosqm_aod/aod/cosqm_izana/data/'
 paths_izana=sorted(glob(path_izana+"*/*/*.txt"))
 files=np.array([LoadData(path) for path in paths_izana])
@@ -145,8 +224,7 @@ cosqm_izana=np.concatenate(files[:,0])
 dates_izana=np.concatenate(files[:,1])
 dt_izana=[dt.fromtimestamp(date) for date in dates_izana]
 
-#%% COSQM IZANA OBSERVATORY
-
+#COSQM IZANA OBSERVATORY
 path_obs='/Users/admin/Documents/physique/Maitrise/hiver_2020/cosqm_aod/aod/cosqm_obs/data/'
 paths_obs=sorted(glob(path_obs+"*/*/*.txt"))
 files=np.array([LoadData(path) for path in paths_obs])
@@ -155,137 +233,170 @@ dates_obs=np.concatenate(files[:,1])
 dt_obs=[dt.fromtimestamp(date) for date in dates_obs]
 
 
-#%% CALIMA observed on night of feburary 23rd 2020
-first_day=1
-last_day=28
+#################
+#CALIMA
+#################
+# #CALIMA observed on night of feburary 23rd 2020
+# first_day=1
+# last_day=28
 
-### Calima at santa cruz for each band
-calima_mask=(dates_santa>=dt(2020,2,first_day).timestamp())*(dates_santa<=dt(2020,2,last_day).timestamp())
-calima_days=[dt.fromtimestamp(calima).date() for calima in dates_santa[calima_mask]]
-inc=int(len(calima_days)/(last_day-first_day))
-idxs=np.arange(0,len(calima_days),inc)
-ticks_labels=calima_days[100:-1:inc]
+# ### Calima at santa cruz for each band
+# calima_mask=(dates_santa>=dt(2020,2,first_day).timestamp())*(dates_santa<=dt(2020,2,last_day).timestamp())
+# calima_days=[dt.fromtimestamp(calima).date() for calima in dates_santa[calima_mask]]
+# inc=int(len(calima_days)/(last_day-first_day))
+# idxs=np.arange(0,len(calima_days),inc)
+# ticks_labels=calima_days[100:-1:inc]
 
-color=['k','r','g','b','y']
-for i in np.arange(5):
-    if i ==0:
-        plt.plot(np.arange(len(calima_days)), cosqm_santa[calima_mask,5+i],'.',markersize=2,color=color[i],label='Santa Cruz')
-    else:
-        plt.plot(np.arange(len(calima_days)), cosqm_santa[calima_mask,5+i],'.',markersize=2,color=color[i])
-    plt.xlabel('Date')
-    plt.ylabel('ZNSB (mag)')
-    plt.xticks(idxs, ticks_labels, rotation=70)
-    plt.legend()
-
-
-#%% Calima at each location for clear band
-
-santa_mask=(dates_santa>=dt(2020,2,first_day).timestamp())*(dates_santa<=dt(2020,2,last_day).timestamp())
-santa_days=[dt.fromtimestamp(calima).date() for calima in dates_santa[santa_mask]]
-
-izana_mask=(dates_izana>=dt(2020,2,first_day).timestamp())*(dates_izana<=dt(2020,2,last_day).timestamp())
-izana_days=[dt.fromtimestamp(calima).date() for calima in dates_izana[izana_mask]]
-
-obs_mask=(dates_obs>=dt(2020,2,first_day).timestamp())*(dates_obs<=dt(2020,2,last_day).timestamp())
-obs_days=[dt.fromtimestamp(calima).date() for calima in dates_obs[obs_mask]]
-
-teide_mask=(dates_teide>=dt(2020,2,first_day).timestamp())*(dates_teide<=dt(2020,2,last_day).timestamp())
-teide_days=[dt.fromtimestamp(calima).date() for calima in dates_teide[teide_mask]]
+# color=['k','r','g','b','y']
+# for i in np.arange(5):
+#     if i ==0:
+#         plt.plot(np.arange(len(calima_days)), cosqm_santa[calima_mask,5+i],'.',markersize=2,color=color[i],label='Santa Cruz')
+#     else:
+#         plt.plot(np.arange(len(calima_days)), cosqm_santa[calima_mask,5+i],'.',markersize=2,color=color[i])
+#     plt.xlabel('Date')
+#     plt.ylabel('ZNSB (mag)')
+#     plt.xticks(idxs, ticks_labels, rotation=70)
+#     plt.legend()
 
 
-inc=int(len(calima_days)/(last_day-first_day))
-idxs=np.arange(0,len(calima_days),inc)
-ticks_labels=calima_days[100:-1:inc]
+# #%% Calima at each location for clear band
 
-plt.plot(np.arange(len(santa_days)), cosqm_santa[santa_mask,5],'.',markersize=5,color='w',label='Santa Cruz')
-plt.plot(np.arange(len(izana_days)), cosqm_izana[izana_mask,5],'.',markersize=5,color='r',label='Izana')
-plt.plot(np.arange(len(obs_days)), cosqm_obs[obs_mask,5],'.',markersize=5,color='g',label='Observatory (Izana)')
-plt.plot(np.arange(len(teide_days)), cosqm_teide[teide_mask,5],'.',markersize=5,color='b',label='Pico del Teide')
+# santa_mask=(dates_santa>=dt(2020,2,first_day).timestamp())*(dates_santa<=dt(2020,2,last_day).timestamp())
+# santa_days=[dt.fromtimestamp(calima).date() for calima in dates_santa[santa_mask]]
 
-plt.xlabel('Date')
-plt.ylabel('ZNSB (mag)')
-plt.xticks(idxs, ticks_labels, rotation=70)
-plt.legend()
+# izana_mask=(dates_izana>=dt(2020,2,first_day).timestamp())*(dates_izana<=dt(2020,2,last_day).timestamp())
+# izana_days=[dt.fromtimestamp(calima).date() for calima in dates_izana[izana_mask]]
+
+# obs_mask=(dates_obs>=dt(2020,2,first_day).timestamp())*(dates_obs<=dt(2020,2,last_day).timestamp())
+# obs_days=[dt.fromtimestamp(calima).date() for calima in dates_obs[obs_mask]]
+
+# teide_mask=(dates_teide>=dt(2020,2,first_day).timestamp())*(dates_teide<=dt(2020,2,last_day).timestamp())
+# teide_days=[dt.fromtimestamp(calima).date() for calima in dates_teide[teide_mask]]
+
+
+# inc=int(len(calima_days)/(last_day-first_day))
+# idxs=np.arange(0,len(calima_days),inc)
+# ticks_labels=calima_days[100:-1:inc]
+
+# plt.plot(np.arange(len(santa_days)), cosqm_santa[santa_mask,5],'.',markersize=5,color='w',label='Santa Cruz')
+# plt.plot(np.arange(len(izana_days)), cosqm_izana[izana_mask,5],'.',markersize=5,color='r',label='Izana')
+# plt.plot(np.arange(len(obs_days)), cosqm_obs[obs_mask,5],'.',markersize=5,color='g',label='Observatory (Izana)')
+# plt.plot(np.arange(len(teide_days)), cosqm_teide[teide_mask,5],'.',markersize=5,color='b',label='Pico del Teide')
+
+# plt.xlabel('Date')
+# plt.ylabel('ZNSB (mag)')
+# plt.xticks(idxs, ticks_labels, rotation=70)
+# plt.legend()
+
+##########################################################
+
+##########
+# Aerosol phase function from brightness of low moon
+##########
+# By visual analysis, selection of nights with a full or near full moon. 
+# slices = np.arange(16000,18500)
+# angles_cut = np.array(angles[slices]).flatten()
+
+# # Create mask
+# phase_mask = np.argwhere((angles_cut<30) & (angles_cut>0))
+# phase_angles_cut = angles_cut[phase_mask]
+
+# plt.scatter(angles_cut[phase_mask], cosqm_obs[:,5][phase_mask],s=0.1, label='clear',c='k')
+# plt.scatter(angles_cut[phase_mask], cosqm_obs[:,6][phase_mask],s=0.1, label='R',c='r')
+# plt.scatter(angles_cut[phase_mask], cosqm_obs[:,7][phase_mask],s=0.1, label='G',c='g')
+# plt.scatter(angles_cut[phase_mask], cosqm_obs[:,8][phase_mask],s=0.1, label='B',c='b')
+# plt.scatter(angles_cut[phase_mask], cosqm_obs[:,9][phase_mask],s=0.1, label='Y',c='y')   
+# plt.legend()
+
+
+
 
 
 #%%--------------------
 #
 #       AOD Values from AERONET network
-#   Values are from level 1.5, meaning there are cloud correction
-#   but no atmospheric bands corrections.
+#   Values are from level 1.0, meaning there are no corrections
 #
 
-#%% AOD
-print(" SANTA CRUZ")
-print("AOD LEVEL 1.5 (no clouds but no calib) data from aeronet for all of year 2019, all bands")
-print("Day format changed from 06-11: full night to split at midnight")
-print("read from columns 4 to 25 (aod 1640 to 340nm)")
+# COSQM Day format changed from 06-11: full night to split at midnight, so beware
+# read from columns 4 to 25 (aod 1640 to 340nm)
 
 cols = np.arange(4, 26)
-path = 'cosqm_santa_cruz/20190101_20191231_Santa_Cruz_Tenerife.lev15'
+path = 'cosqm_santa/20190611_20191231_Santa_Cruz_Tenerife.lev10'
 header = 7
 data_aod = np.genfromtxt(path, delimiter = ',', skip_header = header, usecols = cols)
 data_aod[data_aod < 0] = 0
 
-print("DATES")
+# DATES
 dates_str = np.genfromtxt(path, delimiter = ',', skip_header = header, usecols = [0,1], dtype = str)
 dates_aod = np.array([ dt.strptime( dates+times, '%d:%m:%Y%H:%M:%S' ).timestamp() for dates, times in dates_str ])
 
-print("BANDS")
+# BANDS AOD_1640nm', 'AOD_1020nm', 'AOD_870nm', 'AOD_865nm', 'AOD_779nm',
+#       'AOD_675nm', 'AOD_667nm', 'AOD_620nm', 'AOD_560nm', 'AOD_555nm',
+#       'AOD_551nm', 'AOD_532nm', 'AOD_531nm', 'AOD_510nm', 'AOD_500nm',
+#       'AOD_490nm', 'AOD_443nm', 'AOD_440nm', 'AOD_412nm', 'AOD_400nm',
+#       'AOD_380nm', 'AOD_340nm'],
+
 bands_aod = np.genfromtxt(path, delimiter = ',', skip_header = header-1, skip_footer = len(data_aod), usecols = cols, dtype = str)
 
-print("find which bands have no data (take mean of bands and find indices diff. than 0)")
+# Find which bands have no data (take mean of bands and find indices diff. than 0)
 means = np.mean(data_aod, axis = 0)
 non_empty_aod = np.array(np.nonzero(means))
+data_aod = data_aod[:,non_empty_aod[0]]
+
+
+
+#########
+# GRAPHS
+#########
+# Plot each band of aod measurements for total data
+[plt.scatter(dates_aod, data_aod[:,i], label=bands_aod[non_empty_aod[0,i]], s=0.2) for i in range(non_empty_aod[0].shape[0])]
+plt.legend()
+plt.show()
+
+# Plot continuity between aod day values and cosqm night brightness values
+plt.scatter(dates,cosqm_santa[:,0]/cosqm_santa[:,0].max(), s=1)
+plt.scatter(dates_aod,data_aod[:,0]/data_aod[:,0].max()*20, s=1)
+
+
+
 
 
 #%% Load COSQM from AOD values
-
-print("Load appropriate data from aod to corresponding cosqm values")
-start = 5000
-stop = 11400
-
+# Load appropriate data from aod to corresponding cosqm values
+start = 0
+stop = cosqm_santa.shape[0]
+#stop=100
 indexes = range(start,stop)
 cosqm_value = []
 delta_ts = []
 
 for i in indexes:
-    data,delta_t = FindClosest(dates_aod,i)
+    data,delta_t = FindClosest(dates_aod,i,'cosqm_santa')
     cosqm_value.append(data)
     delta_ts.append(delta_t)
 
 cosqm_value = np.array(cosqm_value)
 
-#%% Moon correction
-
-print("Correction for moon rise and moon set (first and last values of aod recorded per night (day), going through midnight)")
-moonrise_idx = np.zeros(len(dates_aod))
-
-
-moonrise_idx=[(i if dt.utcfromtimestamp(dates_aod[i+1]).hour-dt.utcfromtimestamp(dates_aod[i]).hour>0
-               and dt.utcfromtimestamp(dates_aod[i+1]).hour>15 else 0
-               for i in range(len(dates_aod[start:stop])))]
-moonrise_idx = np.array(np.nonzero(moonrise_idx)).astype(int)[0]
-
 #%%Correlation plots
 
 plot_start = 0
-plot_end = 6400
+plot_end = cosqm_santa.shape[0]
 
 plt.figure()
 plt.plot(data_aod[start:stop,2],'.',markersize = 2)
-plt.plot(moonrise_idx,data_aod[moonrise_idx+start,2],'.',color = 'r',markersize = 5)
+#plt.plot(moonrise_idx,data_aod[moonrise_idx+start,2],'.',color = 'r',markersize = 5)
+
+#plt.figure()
+#plt.plot(cosqm_value[moonrise_idx,5],'.',markersize = 2)
+
 
 plt.figure()
-plt.plot(cosqm_value[moonrise_idx,5],'.',markersize = 2)
-
-
-plt.figure()
-plt.plot(data_aod[moonrise_idx+start,5],cosqm_value[moonrise_idx,5],'.',markersize = 2,color = 'w')
-plt.plot(data_aod[moonrise_idx+start,5],cosqm_value[moonrise_idx,6],'.',markersize = 2,color = 'r')
-plt.plot(data_aod[moonrise_idx+start,5],cosqm_value[moonrise_idx,7],'.',markersize = 2,color = 'g')
-plt.plot(data_aod[moonrise_idx+start,5],cosqm_value[moonrise_idx,8],'.',markersize = 2,color = 'b')
-plt.plot(data_aod[moonrise_idx+start,5],cosqm_value[moonrise_idx,9],'.',markersize = 2,color = 'y')
+plt.plot(data_aod[:,5],cosqm_value[moonrise_idx,5],'.',markersize = 2,color = 'w')
+plt.plot(data_aod[:,5],cosqm_value[moonrise_idx,6],'.',markersize = 2,color = 'r')
+plt.plot(data_aod[:,5],cosqm_value[moonrise_idx,7],'.',markersize = 2,color = 'g')
+plt.plot(data_aod[:,5],cosqm_value[moonrise_idx,8],'.',markersize = 2,color = 'b')
+plt.plot(data_aod[:,5],cosqm_value[moonrise_idx,9],'.',markersize = 2,color = 'y')
 
 
 #%%AOD, TEIDE observatory
