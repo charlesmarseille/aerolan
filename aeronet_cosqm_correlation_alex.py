@@ -158,7 +158,6 @@ dt_santa_moon_sun = dt_santa_moon[sun_mask]
 
 
 santa_dates_noclouds_str = np.array(glob('cosqm_santa/data/2019/*/webcam/*.jpg'))			# Load str from noclouds images
-np.savetxt('santa_cruz_noclouds_fnames.txt', santa_dates_noclouds_str)
 santa_noclouds_dates = np.array([ dt.strptime( date[-21:-4], '%Y-%m-%d_%H%M%S' ).timestamp() for date in santa_dates_noclouds_str ])		# Convert images time str to timestamps
 santa_noclouds_days = np.array([ dt.strptime( date[-21:-11], '%Y-%m-%d' ).timestamp() for date in santa_dates_noclouds_str ])			# Convert images time str to timestamp days 
 
