@@ -145,49 +145,40 @@ cosqm_santa_moon_sun = cosqm_santa_moon[sun_mask]
 dt_santa_moon_sun = dt_santa_moon[sun_mask]
 
 
-
+#########################
 # Cloud removal from visual analysis: thumbnails are checked in a file browser and a folder is created with the clear
 # skies data. The filename is of format YYYY-MM-DD_HH/MM/SS.jpg
 ######
 # WARNING: filenames have SLASHES or colons, which can't be read in Microsoft Windows. You must use unix to replace / or : with _ in filenames so that
-# the code works in Windows. The following 2 lines must be ran in unix in the folder showing the years of measurements.
-#fnames = glob('*/*/webcam/*.jpg')
-#[os.rename(fname, fname[:28]+''+fname[29:31]+''+fname[32:]) for fname in fnames]
+# the code works in Windows. The following 2 lines must be ran in unix in the folder showing the years of measurements (for string positions):
+# ----    fnames = glob('*/*/webcam/*.jpg')
+# ----    [os.rename(fname, fname[:28]+fname[29:31]+fname[32:]) for fname in fnames]
 ######
 
-
-
 santa_dates_noclouds_str = np.array(glob('cosqm_santa/data/2019/*/webcam/*.jpg'))			# Load str from noclouds images
-np.savetxt('santa_cruz_noclouds_fnames.txt', santa_dates_noclouds_str)
+np.savetxt('santa_cruz_noclouds_fnames.txt', santa_dates_noclouds_str, fmt='%s')
 santa_noclouds_dates = np.array([ dt.strptime( date[-21:-4], '%Y-%m-%d_%H%M%S' ).timestamp() for date in santa_dates_noclouds_str ])		# Convert images time str to timestamps
 santa_noclouds_days = np.array([ dt.strptime( date[-21:-11], '%Y-%m-%d' ).timestamp() for date in santa_dates_noclouds_str ])			# Convert images time str to timestamp days 
 
-# Plot histogram of occurence of no cloud images per day in timestamps
-#santa_noclouds_hist, santa_noclouds_days = np.histogram(santa_noclouds_days,(dt.fromtimestamp(santa_noclouds_dates[-1])-dt.fromtimestamp(santa_noclouds_dates[0])).days+1)
-
-plt.hist(santa_noclouds_days, np.arange)
-
-
-# Find days that are present in the no-clouds filenames
-days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(santa_clouds_dates[0])).days+1 for date in santa_clouds_dates])
+bins = np.arange(santa_noclouds_days.min(),santa_noclouds_days.max(), 24*60*60)		# define complete days for binning
+santa_noclouds_days_hist, santa_noclouds_days_bins = np.histogram(santa_noclouds_days, np.arange(santa_noclouds_days.min(),santa_noclouds_days.max(), 24*60*60)) 		# count number of images per day
+min_images = 20		# minimum number of non clouded images in a day to be considered
+santa_noclouds_days_filtered = santa_noclouds_days_bins[np.argwhere(santa_noclouds_days_hist > min_images)][:,0]			# select only days that have at least min_images non-clouded images
 
 # Mask days that were clouded
-cloud_mask = np.ones(days_since_start.shape[0], dtype=bool)
-cloud_mask[np.where(days_since_start.reshape(days_since_start.size, 1) != noclouds)[1]] = False
-santa_clouds_days = santa_clouds_days[cloud_mask]
+santa_days = np.array([ dt.strptime( date.strftime('%Y-%m-%d'), '%Y-%m-%d' ).timestamp() for date in dt_santa_moon_sun ])
+cloud_mask = np.isin(santa_days, santa_noclouds_days_filtered)
+dates_moon_sun_clouds = dates_moon_sun[cloud_mask]
+cosqm_santa_moon_sun_clouds = cosqm_santa_moon_sun[cloud_mask]
 
-# Mask cosqm_data for clouded days
+# Plot cosqm_data filtered for clouds
+plt.scatter(dates_moon_sun, cosqm_santa_moon_sun[:,0], s=1)
+plt.scatter(dates_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=0.5)
 
-cloud_data_mask = np.ones(cosqm_santa.shape[0], dtype=bool)
-cloud_data_mask[np.where(dates_days_since_start.reshape(dates_days_since_start.size, 1) != noclouds)[1]] = False
-dates = dates[cloud_data_mask]
-cosqm_santa = cosqm_santa[cloud_data_mask]
 
 ###########################
-
 # Load AERONET data from corresponding site
-
-
+###########################
 
 #COSQM TEIDE ***BUG IN COSQM DATA FROM WGET COMMAND***
 def LoadDataCorrupt(path,cache={}):
