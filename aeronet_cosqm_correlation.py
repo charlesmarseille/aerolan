@@ -20,7 +20,7 @@ def LoadData(path,cache={}):
         try:
             data_server = np.genfromtxt(path, usecols = list(np.arange(2,17)),invalid_raise=False)
             dates_str = np.genfromtxt(path, delimiter = ' ', usecols = [0,1], dtype = 'str')
-            dates_cosqm = np.array([ dt.strptime( dates+times, '%Y-%m-%d%H:%M:%S' ).timestamp() for dates, times in dates_str ])
+            dates_cosqm = np.array([ dt.strptime( dates+times+':+0000', '%Y-%m-%d%H:%M:%S:%z' ).timestamp() for dates, times in dates_str ])
             cache[path] = (data_server, dates_cosqm)
             return data_server, dates_cosqm
         except:
@@ -125,8 +125,9 @@ np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce
 moon_angles = np.loadtxt('cosqm_santa_moon_angles.txt')					#Load already computed angles
 
 # Mask values for higher angle than -18deg (astro twilight)
+moon_min_angle = -20
 moon_mask = np.ones(dates.shape[0], bool)
-moon_mask[np.where(moon_angles>-18)[0]] = False
+moon_mask[np.where(moon_angles>+moon_min_angle)[0]] = False
 
 dates_moon = dates[moon_mask]
 cosqm_santa_moon = cosqm_santa[:,5:10][moon_mask]
@@ -137,12 +138,20 @@ sun_angles = SunAngle(dates_moon, santa_loc)
 np.savetxt('cosqm_santa_sun_angles.txt', sun_angles)
 sun_angles = np.loadtxt('cosqm_santa_sun_angles.txt')					#Load already computed angles
 
+sun_min_angle = -20
 sun_mask = np.ones(dates_moon.shape[0], bool)
-sun_mask[np.where(sun_angles>-18)[0]] = False
+sun_mask[np.where(sun_angles>+sun_min_angle)[0]] = False
 
 dates_moon_sun = dates_moon[sun_mask]
 cosqm_santa_moon_sun = cosqm_santa_moon[sun_mask]
 dt_santa_moon_sun = dt_santa_moon[sun_mask]
+
+plt.scatter(dates, cosqm_santa[:,5], s=1, label='cosqm_santa')
+plt.scatter(dates_moon, cosqm_santa_moon[:,0], label='moon below '+str(moon_min_angle))
+plt.scatter(dates_moon_sun, cosqm_santa_moon_sun[:,0], label='sun below '+str(sun_min_angle))
+plt.scatter(dates_moon_sun, sun_angles[sun_mask]/10, label='normalized sun angle')
+plt.scatter(dates_moon, moon_angles[moon_mask]/10, label='normalized moon angle')
+plt.legend()
 
 
 #########################
@@ -156,9 +165,10 @@ dt_santa_moon_sun = dt_santa_moon[sun_mask]
 ######
 
 santa_dates_noclouds_str = np.array(glob('cosqm_santa/data/2019/*/webcam/*.jpg'))			# Load str from noclouds images
-np.savetxt('santa_cruz_noclouds_fnames.txt', santa_dates_noclouds_str, fmt='%s')
-santa_noclouds_dates = np.array([ dt.strptime( date[-21:-4], '%Y-%m-%d_%H%M%S' ).timestamp() for date in santa_dates_noclouds_str ])		# Convert images time str to timestamps
-santa_noclouds_days = np.array([ dt.strptime( date[-21:-11], '%Y-%m-%d' ).timestamp() for date in santa_dates_noclouds_str ])			# Convert images time str to timestamp days 
+np.savetxt('santa_cruz_noclouds_fnames_2019.txt', santa_dates_noclouds_str, fmt='%s')
+santa_dates_noclouds_str = pd.read_csv('santa_cruz_noclouds_fnames_2019.txt', dtype='str').values
+santa_noclouds_dates = np.array([ dt.strptime( date[0][-21:-4], '%Y-%m-%d_%H%M%S' ).timestamp() for date in santa_dates_noclouds_str ])		# Convert images time str to timestamps
+santa_noclouds_days = np.array([ dt.strptime( date[0][-21:-11], '%Y-%m-%d' ).timestamp() for date in santa_dates_noclouds_str ])			# Convert images time str to timestamp days 
 
 bins = np.arange(santa_noclouds_days.min(),santa_noclouds_days.max(), 24*60*60)		# define complete days for binning
 santa_noclouds_days_hist, santa_noclouds_days_bins = np.histogram(santa_noclouds_days, np.arange(santa_noclouds_days.min(),santa_noclouds_days.max(), 24*60*60)) 		# count number of images per day
@@ -174,6 +184,80 @@ cosqm_santa_moon_sun_clouds = cosqm_santa_moon_sun[cloud_mask]
 # Plot cosqm_data filtered for clouds
 plt.scatter(dates_moon_sun, cosqm_santa_moon_sun[:,0], s=1)
 plt.scatter(dates_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=0.5)
+
+#Apply threshold for mag values
+cosqm_santa_moon_sun_clouds_thr = np.array([np.array(meas[meas>16]) for meas in cosqm_santa_moon_sun_clouds]
+
+
+################
+# Light pollution trends
+################
+
+# Per day of week
+# dt.datetime.weekday() is: Monday=0, Tuesday=1... Sunday=6
+d = dates_moon_sun_clouds
+weekdays = np.array([ dt.fromtimestamp(timestamp, timezone.utc).weekday() for timestamp in d ])
+hours = np.array([ dt.fromtimestamp(timestamp, timezone.utc).hour for timestamp in d ])
+hours[hours>12]-=24
+c = cosqm_santa_moon_sun_clouds
+
+weekdays_str = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
+markers = ['.', '1', '2', '3', '4', 'o', 's']
+
+plt.figure(figsize=[16,9])
+for i in range(7):
+	days_mask = np.ones(d.shape[0],dtype=bool)
+	days_mask[np.where(weekdays != i)] = False
+	plt.scatter(hours[days_mask],c[days_mask,0], s=30, label=weekdays_str[i], marker=markers[i])
+
+plt.legend()
+plt.title('ZNSB Santa-Cruz 2019 - day of week')
+
+
+# Average per month
+d = dates_moon_sun_clouds
+months = np.array([ dt.fromtimestamp(timestamp, timezone.utc).month for timestamp in d ])
+hours = np.array([ dt.fromtimestamp(timestamp, timezone.utc).hour for timestamp in d ])
+hours[hours>12]-=24
+c = cosqm_santa_moon_sun_clouds
+
+months_str = ['January', 'Feburary', 'Mars', 'April', 'May', 'June', 'July', 'August', 'Septembre', 'october', 'November', 'December']
+markers = ['.', '1', '2', '3', '4', 'o', 's', '*', '+', 'x', 'd', '|']
+
+plt.figure(figsize=[16,9])
+for month in np.unique(months):
+	months_mask = np.ones(d.shape[0],dtype=bool)
+	months_mask[np.where(months != month)] = False
+	plt.scatter(hours[months_mask],c[months_mask,0], s=30, label=months_str[month], marker=markers[month])
+
+plt.legend()
+plt.title('ZNSB Santa-Cruz 2019 - measurement per hour of night')
+
+plt.figure(figsize=[16,9])
+months_avg = np.zeros(12)
+for month in np.unique(months):
+	months_mask = np.ones(d.shape[0],dtype=bool)
+	months_mask[np.where(months != month)] = False
+	months_avg[month] = c[months_mask,0].mean()
+
+plt.scatter(np.unique(months),months_avg[np.unique(months)], s=30)
+plt.title('ZNSB Santa-Cruz 2019 - average per month')
+
+plt.figure(figsize=[16,9])
+months_hours = []
+months_avg_hours = []
+for month in np.unique(months):
+	months_mask = np.ones(d.shape[0],dtype=bool)
+	months_mask[np.where(months != month)] = False
+	unique_hours = np.unique(hours[months_mask])
+	months_hours.append(np.array(unique_hours))
+	months_avg_hours.append(np.array([ c[months_mask,0][np.where(hours[months_mask]==hour)].mean() for hour in unique_hours ]))
+
+for i in range(len(months_hours)):
+	plt.scatter(months_hours[i], months_avg_hours[i], s=500, marker=markers[i], label='-'+months_str[np.unique(months)[i]])
+plt.title('ZNSB Santa-Cruz 2019 - average per month per hour of night')
+plt.legend()
+
 
 
 ###########################
