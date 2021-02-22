@@ -6,12 +6,13 @@ from datetime import timezone
 import pandas as pd
 from glob import glob
 from skyfield.api import load, Topos
+from scipy import signal
 
 ##############################################################################
-#Function definitions
+# Function definitions
 #############################
 
-#COSQM Data load function, returns data and dates in tuple
+# COSQM Data load function, returns data and dates in tuple
 def LoadData(path,cache={}):
     print (path)
     if path in cache:
@@ -27,8 +28,8 @@ def LoadData(path,cache={}):
             print('********error*********', path)
 
 
-#FIND CLOSEST TIME VALUES FROM AOD TO COSQM
-#Define path from month and day of measurement on AOD
+# FIND CLOSEST TIME VALUES FROM AOD TO COSQM
+# Define path from month and day of measurement on AOD
 def FindClosest(dates_aod,index,path_in):
     # define paths
     date = dt.fromtimestamp(dates_aod[index])
@@ -60,7 +61,7 @@ def FindClosest(dates_aod,index,path_in):
 
     return cosqm_value2, delta_t
 
-#Moon presence data reduction function and variables
+# Moon presence data reduction function and variables
 ts = load.timescale()
 planets = load('de421.bsp')
 earth,moon,sun = planets['earth'],planets['moon'],planets['sun']
@@ -85,23 +86,49 @@ def SunAngle(timestamp_array, location):
     alt, _, _ = astrometric.apparent().altaz()
     return alt.degrees
 
+# Cloud presence, analytical approach. Square moving filter of triplets, if higher than threshold, set to nan.
+# def CloudTriplets(data_array, kernel_size):
+# 	return np.array([np.convolve(col, np.ones(kernel_size)/kernel_size, mode='same') for col in data_array])
+
+# def CloudTriplets(data_array, kernel_size):   ####not working####
+# 	kernel = np.ones(kernel_size) / kernel_size
+# 	conv_array = np.array([np.convolve(col,kernel, mode='same') / sum(kernel) for col in data_array.T]).T
+# 	return  conv_array
+
+
+def CloudDiff(data_array, threshold):
+	diff_array_append = np.array([np.diff(col, append=0) for col in data_array.T]).T
+	diff_array_prepend = np.array([np.diff(col, prepend=0) for col in data_array.T]).T
+	filtered = data_array
+	filtered[np.abs(diff_array_append)>threshold] = np.nan
+	filtered[np.abs(diff_array_prepend)>threshold] = np.nan
+	return filtered
+
+a = np.copy(cosqm_santa_moon_sun[:,0])
+diff = np.diff(a, append=0)
+diff2 = np.diff(a, prepend=0)
+threshold = 0.0001
+a[np.abs(diff)>threshold] = 0
+a[np.abs(diff2)>threshold] = 0
+dates_a = dates_santa_moon_sun[a!=0]
+a = a[a!=0]
 
 
 ##############################################################################
-#COSQM DATA
-#Variation as a function of whole year, day of week, month and season
-#Data taken from Martin Aubé's server: http://dome.obsand.org:2080/DATA/CoSQM-Network/
+# COSQM DATA
+# Variation as a function of whole year, day of week, month and season
+# Data taken from Martin Aubé's server: http://dome.obsand.org:2080/DATA/CoSQM-Network/
 #
-#Data format: Date(YYYY-MM-DD), time(HH:MM:SS),
+# Data format: Date(YYYY-MM-DD), time(HH:MM:SS),
 #             Latitude, Longitude, Elevation, SQM temperature, integration time, 
 #             C(mag), R(mag), G(mag), B(mag), Y(mag),
 #             C(watt),R(watt),G(watt),B(watt),Y(watt)  
 #############################
 
-#COSQM SANTA CRUZ
+# COSQM SANTA CRUZ
 path_santa='cosqm_santa/data/'
 
-#find all paths of files in root directory
+# find all paths of files in root directory
 paths_santa=sorted(glob(path_santa+"2019/*/*.txt"))
 
 files=np.array([LoadData(path) for path in paths_santa])
@@ -109,7 +136,7 @@ cosqm_santa=np.concatenate(files[:,0])
 dates_santa=np.concatenate(files[:,1])
 dt_santa=np.array([dt.fromtimestamp(date, tz=timezone.utc) for date in dates_santa])
 
-#Remove zeros from cosqm measurements (bugs from instruments)
+# Remove zeros from cosqm measurements (bugs from instruments)
 zeros_mask = np.ones(cosqm_santa.shape[0], dtype=bool)
 for i in range(5,10):
 	zeros_mask[np.where(cosqm_santa[:,i]==0)[0]]=False
@@ -119,39 +146,44 @@ dt_santa = dt_santa[zeros_mask]
 
 # Compute moon angles for each timestamp in COSQM data
 # WARNING: LONG CALCULATION TIME! (10+ minutes for 80k points)
-dates = dates_santa
-moon_angles = MoonAngle(dates, santa_loc)
+moon_angles = MoonAngle(dates_santa, santa_loc)
 np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce ulterior computing time
 moon_angles = np.loadtxt('cosqm_santa_moon_angles.txt')					#Load already computed angles
 
 # Mask values for higher angle than -18deg (astro twilight)
-moon_min_angle = -20
-moon_mask = np.ones(dates.shape[0], bool)
+moon_min_angle = -18
+moon_mask = np.ones(dates_santa.shape[0], bool)
 moon_mask[np.where(moon_angles>+moon_min_angle)[0]] = False
 
-dates_moon = dates[moon_mask]
+dates_santa_moon = dates_santa[moon_mask]
 cosqm_santa_moon = cosqm_santa[:,5:10][moon_mask]
 dt_santa_moon = dt_santa[moon_mask]
 #dates_days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(dates[0])).days+1 for date in dates])
 
-sun_angles = SunAngle(dates_moon, santa_loc)
+sun_angles = SunAngle(dates_santa_moon, santa_loc)
 np.savetxt('cosqm_santa_sun_angles.txt', sun_angles)
 sun_angles = np.loadtxt('cosqm_santa_sun_angles.txt')					#Load already computed angles
 
-sun_min_angle = -20
-sun_mask = np.ones(dates_moon.shape[0], bool)
+sun_min_angle = -18
+sun_mask = np.ones(dates_santa_moon.shape[0], bool)
 sun_mask[np.where(sun_angles>+sun_min_angle)[0]] = False
 
-dates_moon_sun = dates_moon[sun_mask]
+dates_santa_moon_sun = dates_santa_moon[sun_mask]
 cosqm_santa_moon_sun = cosqm_santa_moon[sun_mask]
 dt_santa_moon_sun = dt_santa_moon[sun_mask]
 
-plt.scatter(dates, cosqm_santa[:,5], s=1, label='cosqm_santa')
-plt.scatter(dates_moon, cosqm_santa_moon[:,0], label='moon below '+str(moon_min_angle))
-plt.scatter(dates_moon_sun, cosqm_santa_moon_sun[:,0], label='sun below '+str(sun_min_angle))
-plt.scatter(dates_moon_sun, sun_angles[sun_mask]/10, label='normalized sun angle')
-plt.scatter(dates_moon, moon_angles[moon_mask]/10, label='normalized moon angle')
-plt.legend()
+plt.scatter(dates_santa, cosqm_santa[:,5], s=50, label='cosqm_santa')
+plt.scatter(dates_santa_moon, cosqm_santa_moon[:,0], label='moon below '+str(moon_min_angle),s=50)
+plt.scatter(dates_santa_moon_sun, cosqm_santa_moon_sun[:,0], label='sun below '+str(sun_min_angle),s=8)
+plt.scatter(dates_santa_moon_sun, sun_angles[sun_mask]/10, label='normalized sun angle')
+plt.scatter(dates_santa_moon, moon_angles[moon_mask]/10, label='normalized moon angle')
+plt.legend(loc=[0,0])
+
+
+# Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
+cosqm_santa_diff = CloudDiff(cosqm_santa_moon_sun, 0.02)
+plt.scatter(dates_santa_moon_sun, cosqm_santa_diff[:,0], s=10, c='k')
+
 
 
 #########################
@@ -164,9 +196,9 @@ plt.legend()
 # ----    [os.rename(fname, fname[:28]+fname[29:31]+fname[32:]) for fname in fnames]
 ######
 
-santa_dates_noclouds_str = np.array(glob('cosqm_santa/data/2019/*/webcam/*.jpg'))			# Load str from noclouds images
-np.savetxt('santa_cruz_noclouds_fnames_2019.txt', santa_dates_noclouds_str, fmt='%s')
-santa_dates_noclouds_str = pd.read_csv('santa_cruz_noclouds_fnames_2019.txt', dtype='str').values
+#santa_dates_noclouds_str = np.array(glob('cosqm_santa/data/*/*/webcam/*.jpg'))			# Load str from noclouds images
+#np.savetxt('santa_cruz_noclouds_fnames.txt', santa_dates_noclouds_str, fmt='%s')
+santa_dates_noclouds_str = pd.read_csv('santa_cruz_noclouds_fnames.txt', dtype='str').values
 santa_noclouds_dates = np.array([ dt.strptime( date[0][-21:-4], '%Y-%m-%d_%H%M%S' ).timestamp() for date in santa_dates_noclouds_str ])		# Convert images time str to timestamps
 santa_noclouds_days = np.array([ dt.strptime( date[0][-21:-11], '%Y-%m-%d' ).timestamp() for date in santa_dates_noclouds_str ])			# Convert images time str to timestamp days 
 
@@ -186,7 +218,8 @@ plt.scatter(dates_moon_sun, cosqm_santa_moon_sun[:,0], s=1)
 plt.scatter(dates_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=0.5)
 
 #Apply threshold for mag values
-cosqm_santa_moon_sun_clouds_thr = np.array([np.array(meas[meas>16]) for meas in cosqm_santa_moon_sun_clouds]
+cosqm_santa_moon_sun_clouds_thr = cosqm_santa_moon_sun_clouds
+cosqm_santa_moon_sun_clouds_thr[cosqm_santa_moon_sun_clouds_thr<16]=np.nan
 
 
 ################
