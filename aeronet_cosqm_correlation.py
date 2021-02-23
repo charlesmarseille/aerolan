@@ -99,19 +99,10 @@ def SunAngle(timestamp_array, location):
 def CloudDiff(data_array, threshold):
 	diff_array_append = np.array([np.diff(col, append=0) for col in data_array.T]).T
 	diff_array_prepend = np.array([np.diff(col, prepend=0) for col in data_array.T]).T
-	filtered = data_array
+	filtered = np.copy(data_array)
 	filtered[np.abs(diff_array_append)>threshold] = np.nan
 	filtered[np.abs(diff_array_prepend)>threshold] = np.nan
 	return filtered
-
-a = np.copy(cosqm_santa_moon_sun[:,0])
-diff = np.diff(a, append=0)
-diff2 = np.diff(a, prepend=0)
-threshold = 0.0001
-a[np.abs(diff)>threshold] = 0
-a[np.abs(diff2)>threshold] = 0
-dates_a = dates_santa_moon_sun[a!=0]
-a = a[a!=0]
 
 
 ##############################################################################
@@ -172,19 +163,18 @@ dates_santa_moon_sun = dates_santa_moon[sun_mask]
 cosqm_santa_moon_sun = cosqm_santa_moon[sun_mask]
 dt_santa_moon_sun = dt_santa_moon[sun_mask]
 
-plt.scatter(dates_santa, cosqm_santa[:,5], s=50, label='cosqm_santa')
-plt.scatter(dates_santa_moon, cosqm_santa_moon[:,0], label='moon below '+str(moon_min_angle),s=50)
-plt.scatter(dates_santa_moon_sun, cosqm_santa_moon_sun[:,0], label='sun below '+str(sun_min_angle),s=8)
-plt.scatter(dates_santa_moon_sun, sun_angles[sun_mask]/10, label='normalized sun angle')
-plt.scatter(dates_santa_moon, moon_angles[moon_mask]/10, label='normalized moon angle')
-plt.legend(loc=[0,0])
-
+plt.figure(figsize=[16,9])
+plt.scatter(dt_santa, cosqm_santa[:,5], s=30, label='cosqm_santa')
+plt.scatter(dt_santa_moon, cosqm_santa_moon[:,0], s=30, label='moon below '+str(moon_min_angle))
+plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=15, label='sun below '+str(sun_min_angle))
+plt.scatter(dt_santa_moon_sun, sun_angles[sun_mask]/10+6, s=10, label='sun angle')
+plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+6, s=10, alpha=0.5, label='moon angle')
 
 # Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
 cosqm_santa_diff = CloudDiff(cosqm_santa_moon_sun, 0.02)
-plt.scatter(dates_santa_moon_sun, cosqm_santa_diff[:,0], s=10, c='k')
+plt.scatter(dt_santa_moon_sun, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
 
-
+plt.legend(loc=[0,0])
 
 #########################
 # Cloud removal from visual analysis: thumbnails are checked in a file browser and a folder is created with the clear
@@ -210,16 +200,22 @@ santa_noclouds_days_filtered = santa_noclouds_days_bins[np.argwhere(santa_noclou
 # Mask days that were clouded
 santa_days = np.array([ dt.strptime( date.strftime('%Y-%m-%d'), '%Y-%m-%d' ).timestamp() for date in dt_santa_moon_sun ])
 cloud_mask = np.isin(santa_days, santa_noclouds_days_filtered)
-dates_moon_sun_clouds = dates_moon_sun[cloud_mask]
+dates_santa_moon_sun_clouds = dates_santa_moon_sun[cloud_mask]
+dt_santa_moon_sun_clouds = dt_santa_moon_sun[cloud_mask]
 cosqm_santa_moon_sun_clouds = cosqm_santa_moon_sun[cloud_mask]
+cosqm_santa_moon_sun_diff_clouds = cosqm_santa_diff[cloud_mask]
 
 # Plot cosqm_data filtered for clouds
-plt.scatter(dates_moon_sun, cosqm_santa_moon_sun[:,0], s=1)
-plt.scatter(dates_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=0.5)
+plt.figure(figsize=[16,9])
+plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=30, c='b', label='moon and sun filtered')
+plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=20, c='r', label='cloud filter from pictures')
+plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0], s=10, c='k', label='cloud triplets filter+pictures')
+plt.legend(loc=(0,0))
+plt.title('CoSQM Santa-Cruz 2019')
 
-#Apply threshold for mag values
-cosqm_santa_moon_sun_clouds_thr = cosqm_santa_moon_sun_clouds
-cosqm_santa_moon_sun_clouds_thr[cosqm_santa_moon_sun_clouds_thr<16]=np.nan
+
+# Apply threshold from visual analysis
+cosqm_santa_moon_sun_diff_clouds[cosqm_santa_moon_sun_diff_clouds<17] = np.nan
 
 
 ################
@@ -228,11 +224,13 @@ cosqm_santa_moon_sun_clouds_thr[cosqm_santa_moon_sun_clouds_thr<16]=np.nan
 
 # Per day of week
 # dt.datetime.weekday() is: Monday=0, Tuesday=1... Sunday=6
-d = dates_moon_sun_clouds
+d = dates_santa_moon_sun_clouds
 weekdays = np.array([ dt.fromtimestamp(timestamp, timezone.utc).weekday() for timestamp in d ])
-hours = np.array([ dt.fromtimestamp(timestamp, timezone.utc).hour for timestamp in d ])
+hours = np.array([ dt.fromtimestamp(timestamp, timezone.utc).hour+
+	dt.fromtimestamp(timestamp, timezone.utc).minute/60+
+	dt.fromtimestamp(timestamp, timezone.utc).second/3600 for timestamp in d ])
 hours[hours>12]-=24
-c = cosqm_santa_moon_sun_clouds
+c = cosqm_santa_moon_sun_diff_clouds
 
 weekdays_str = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
 markers = ['.', '1', '2', '3', '4', 'o', 's']
@@ -248,11 +246,11 @@ plt.title('ZNSB Santa-Cruz 2019 - day of week')
 
 
 # Average per month
-d = dates_moon_sun_clouds
+d = dates_santa_moon_sun_clouds
 months = np.array([ dt.fromtimestamp(timestamp, timezone.utc).month for timestamp in d ])
 hours = np.array([ dt.fromtimestamp(timestamp, timezone.utc).hour for timestamp in d ])
 hours[hours>12]-=24
-c = cosqm_santa_moon_sun_clouds
+c = cosqm_santa_moon_sun_diff_clouds
 
 months_str = ['January', 'Feburary', 'Mars', 'April', 'May', 'June', 'July', 'August', 'Septembre', 'october', 'November', 'December']
 markers = ['.', '1', '2', '3', '4', 'o', 's', '*', '+', 'x', 'd', '|']
@@ -268,7 +266,7 @@ plt.title('ZNSB Santa-Cruz 2019 - measurement per hour of night')
 
 plt.figure(figsize=[16,9])
 months_avg = np.zeros(12)
-for month in np.unique(months):
+for month in np.unique(months)-1:
 	months_mask = np.ones(d.shape[0],dtype=bool)
 	months_mask[np.where(months != month)] = False
 	months_avg[month] = c[months_mask,0].mean()
