@@ -1,0 +1,19 @@
+Entretien avec martin 2021-03-05
+
+- trouver les mauvaises données du mois d'aout    -> fait, 25,26 aout 2019, 27 aout 2020 
+- vérifier si c'est la bonne bande pour la normalisation   -> c'est la bonne, clear
+- même échelle pour les comparaisons de mois    ->   fait
+- météo vs habitudes? st-cruz régulièrement des nuages très bas au ras du sol 
+- prendre la valeur la plus faible en brillance (sombre) pour déterminer une fonction qui devrait décrire le plus possible les conditions sans nuages -> à tester avec le mois d'aout
+- passer fenêtre glissante sur les données en gardant le plus sombre
+- graphique des paramètres de fit en fonction du mois pour voir s'il y a une suite dans les variations
+- séparer les jours de semaine pour chaque mois, avec la normalisation et les mêmes échelles
+
+
+entretien avec martin 2021-03-09
+
+	On regarde les graphiques de jours de semaine pour chaque mois. on réalise:
+- trop peu de données pour tirer des conclusions par rapport aux jours. On va négliger la distinction des jours et utiliser les données minimales de chaque mois pour déterminer si on doit avoir une fonction par mois ou simplement une fonction par année. 
+- Note pour méthodologie: 1ere hypothèse -> variations de jour et mois sont négligeables devant les variations par année. On valide cette hypothèse si on arrive à améliorer la corrélation aux aérosols. la moyenne est pas bonne, on le voit s'il manque des données et qu'on baisse les courbes à cause des jours trop denses de données (ex. janvier les mercredis entre 2am et 6am).
+- TROUVER la fonction d'écart de temps entre les mesures AOD et la première mesure CoSQM. Déterminer une fonction poids pour mettre en valeur les faibles écarts qui sont plus fiables que les grands.
+

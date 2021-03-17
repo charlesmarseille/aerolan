@@ -1,5 +1,4 @@
 import numpy as np
-#from matplotlib.dates import datestr2num
 import matplotlib.pyplot as plt
 from datetime import datetime as dt
 from datetime import timezone
@@ -9,10 +8,10 @@ from skyfield.api import load, Topos
 from scipy import signal
 
 ##############################################################################
-# Function definitions
+## Function definitions
 #############################
 
-# COSQM Data load function, returns data and dates in tuple
+## COSQM Data load function, returns data and dates in tuple
 def LoadData(path,cache={}):
     print (path)
     if path in cache:
@@ -28,32 +27,52 @@ def LoadData(path,cache={}):
             print('********error*********', path)
 
 
-# FIND CLOSEST TIME VALUES FROM AOD TO COSQM
-# Define path from month and day of measurement on AOD
+##COSQM TEIDE data load function ***BUG IN COSQM DATA FROM WGET COMMAND***
+def LoadDataCorrupt(path,cache={}):
+    print (path)
+    if path in cache:
+        return cache[path]
+    else:
+        try:
+            data_server = np.array(pd.read_csv(path,sep=' ',dtype=None, error_bad_lines=False))
+            data=data_server[:,2:].astype(float)
+            dates_str=data_server[:,0:2].astype(str)
+            dates = np.array([ dt.strptime( dates+times, '%Y-%m-%d%H:%M:%S' ).timestamp() for dates, times in dates_str ])
+            print('data', np.shape(data), 'dates', np.shape(dates))
+            dates1=dates.reshape(len(dates),1)
+            output = np.concatenate((data,dates1),axis=1)
+            cache[path] = (data,dates)
+            out=(data,dates)
+            output=np.concatenate((out[0],out[1].reshape(np.shape(out[1])[0],1)),axis=1)
+            return output
+        except:
+            print('********error*********', path, '\n')
+
+## FIND CLOSEST TIME VALUES FROM AOD TO COSQM
+## Define path from month and day of measurement on AOD
 def FindClosest(dates_aod,index,path_in):
-    # define paths
     date = dt.fromtimestamp(dates_aod[index])
     date = dict(y = date.year, m = date.month, d = date.day)
     path = path_in+r'/data/%(y)d/%(m)02d/%(y)d-%(m)02d-%(d)02d.txt' % date
 
-    # Download data from this day (night)
+    ## Download data from this day (night)
     try:
     	data,dates_cosqm = LoadData(path)
 
 
-    	# find nearest time value for cosqm corresponding to aod measurement
+    	## find nearest time value for cosqm corresponding to aod measurement
     	idx = np.abs(dates_cosqm-dates_aod[index]).argmin()
     	delta_t = dates_cosqm[idx]-dates_aod[index]
 
     except:
         delta_t = 1001
 
-    # correct for errors of time matching (range of 1000 difference to trigger)
+    ## correct for errors of time matching (range of 1000 difference to trigger)
     if -1000<delta_t<1000:
         cosqm_value1 = data[idx]
         cosqm_value2 = np.copy(cosqm_value1)
 
-        # Cloud correction
+        ## Cloud correction
         #for i in range(5):
             #cosqm_value2[i] = CloudCorr(data[:,6+i],0.005,idx,40)
     else:
@@ -61,18 +80,17 @@ def FindClosest(dates_aod,index,path_in):
 
     return cosqm_value2, delta_t
 
-# Moon presence data reduction function and variables
+## Moon presence data reduction function and variables
 ts = load.timescale()
 planets = load('de421.bsp')
 earth,moon,sun = planets['earth'],planets['moon'],planets['sun']
 
-# Define variables for locations
+## Define variables for locations
 izana_loc = earth + Topos('28.300398N', '16.512252W')
 santa_loc = earth + Topos('28.472412500N', '16.247361500W')
-teide_loc = earth + Topos('28.472412500N', '16.247361500W')
 
-# !! Time objects from dt need a timezone (aware dt object) to work with skyfield lib
-# ex.: time = dt.now(timezone.utc), with an import of datetime.timezone
+## !! Time objects from dt need a timezone (aware dt object) to work with skyfield lib
+## ex.: time = dt.now(timezone.utc), with an import of datetime.timezone
 def MoonAngle(timestamp_array, location):
     datetime = np.array([ dt.fromtimestamp(timestamp, timezone.utc) for timestamp in timestamp_array ])
     t = ts.utc(datetime)
@@ -87,7 +105,7 @@ def SunAngle(timestamp_array, location):
     alt, _, _ = astrometric.apparent().altaz()
     return alt.degrees
 
-# Cloud presence, analytical approach. Square moving filter of triplets, if higher than threshold, set to nan.
+## Cloud presence, analytical approach. Square moving filter of triplets, if higher than threshold, set to nan.
 # def CloudTriplets(data_array, kernel_size):
 # 	return np.array([np.convolve(col, np.ones(kernel_size)/kernel_size, mode='same') for col in data_array])
 
@@ -117,12 +135,12 @@ def CloudDiff(data_array, threshold):
 #             C(watt),R(watt),G(watt),B(watt),Y(watt)  
 #############################
 
-# COSQM SANTA CRUZ
+## COSQM SANTA CRUZ
 path_santa='cosqm_santa/data/'
 loc = santa_loc
 loc_str = 'santa'
 
-# find all paths of files in root directory
+## find all paths of files in root directory
 paths_santa=sorted(glob(path_santa+"*/*/*.txt"))
 
 files=np.array([LoadData(path) for path in paths_santa])
@@ -130,7 +148,7 @@ cosqm_santa=np.concatenate(files[:,0])
 dates_santa=np.concatenate(files[:,1])
 dt_santa=np.array([dt.fromtimestamp(date, tz=timezone.utc) for date in dates_santa])
 
-# Remove zeros from cosqm measurements (bugs from instruments)
+## Remove zeros from cosqm measurements (bugs from instruments)
 zeros_mask = np.ones(cosqm_santa.shape[0], dtype=bool)
 for i in range(5,10):
 	zeros_mask[np.where(cosqm_santa[:,i]==0)[0]]=False
@@ -138,13 +156,13 @@ cosqm_santa = cosqm_santa[zeros_mask]
 dates_santa = dates_santa[zeros_mask]
 dt_santa = dt_santa[zeros_mask]
 
-# Compute moon angles for each timestamp in COSQM data
+## Compute moon angles for each timestamp in COSQM data
 moon_angles = MoonAngle(dates_santa, loc)
 np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce ulterior computing time
 moon_angles = np.loadtxt('cosqm_'+loc_str+'_moon_angles.txt')					#Load already computed angles
 
-# Mask values for higher angle than -18deg (astro twilight)
-moon_min_angle = -18
+## Mask values for higher angle than -18deg (astro twilight)
+moon_min_angle = -1
 moon_mask = np.ones(dates_santa.shape[0], bool)
 moon_mask[np.where(moon_angles>+moon_min_angle)[0]] = False
 
@@ -173,21 +191,23 @@ plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+6, s=10, alpha=0.2, label='
 plt.scatter(dt_santa_moon_sun, sun_angles[sun_mask]/10+6, s=10, alpha=0.5, label='sun angle')
 plt.legend(loc=[0,0])
 plt.title('ZNSB Santa-Cruz - Filtered clear band')
+plt.xlabel('date')
+plt.ylabel('CoSQM magnitude (mag)')
 
 
-# Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
-#cosqm_santa_diff = CloudDiff(cosqm_santa_moon_sun, 0.010)
-#plt.scatter(dt_santa_moon_sun, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
+## Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
+cosqm_santa_diff = CloudDiff(cosqm_santa_moon_sun, 0.010)
+plt.scatter(dt_santa_moon_sun, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
 
 
 #########################
-# Cloud removal from visual analysis: thumbnails are checked in a file browser and a folder is created with the clear
-# skies data. The filename is of format YYYY-MM-DD_HH/MM/SS.jpg
+## Cloud removal from visual analysis: thumbnails are checked in a file browser and a folder is created with the clear
+## skies data. The filename is of format YYYY-MM-DD_HH/MM/SS.jpg
 ######
-# WARNING: filenames have SLASHES or colons, which can't be read in Microsoft Windows. You must use unix to replace / or : with _ in filenames so that
-# the code works in Windows. The following 2 lines must be ran in unix in the folder showing the years of measurements (for string positions):
-# ----    fnames = glob('*/*/webcam/*.jpg')
-# ----    [os.rename(fname, fname[:28]+fname[29:31]+fname[32:]) for fname in fnames]
+## WARNING: filenames have SLASHES or colons, which can't be read in Microsoft Windows. You must use unix to replace / or : with _ in filenames so that
+## the code works in Windows. The following 2 lines must be ran in unix in the folder showing the years of measurements (for string positions):
+## ----    fnames = glob('*/*/webcam/*.jpg')
+## ----    [os.rename(fname, fname[:28]+fname[29:31]+fname[32:]) for fname in fnames]
 ######
 
 #santa_dates_noclouds_str = np.array(glob('cosqm_santa/data/*/*/webcam/*.jpg'))			# Load str from noclouds images
@@ -201,7 +221,7 @@ santa_noclouds_days_hist, santa_noclouds_days_bins = np.histogram(santa_noclouds
 min_images = 20		# minimum number of non clouded images in a day to be considered
 santa_noclouds_days_filtered = santa_noclouds_days_bins[np.argwhere(santa_noclouds_days_hist > min_images)][:,0]			# select only days that have at least min_images non-clouded images
 
-# Mask days that were clouded
+## Mask days that were clouded
 santa_days = np.array([ dt.strptime( date.strftime('%Y-%m-%d'), '%Y-%m-%d' ).timestamp() for date in dt_santa_moon_sun ])
 cloud_mask = np.isin(santa_days, santa_noclouds_days_filtered)
 dates_santa_moon_sun_clouds = dates_santa_moon_sun[cloud_mask]
@@ -209,32 +229,125 @@ dt_santa_moon_sun_clouds = dt_santa_moon_sun[cloud_mask]
 cosqm_santa_moon_sun_clouds = cosqm_santa_moon_sun[cloud_mask]
 cosqm_santa_moon_sun_diff_clouds = cosqm_santa_diff[cloud_mask]
 
-# Plot cosqm_data filtered for clouds
+## Plot cosqm_data filtered for clouds
 plt.figure(figsize=[16,9])
 plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=30, c='b', label='moon and sun filtered')
 plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=20, c='r', label='cloud filter from pictures')
 plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0], s=10, c='k', label='cloud triplets filter+pictures')
 plt.legend(loc=(0,0))
 plt.title('ZNSB Santa-Cruz')
+plt.xlabel('date')
+plt.ylabel('CoSQM magnitude (mag)')
 
 
-# Apply threshold from visual analysis
-cosqm_santa_moon_sun_diff_clouds[cosqm_santa_moon_sun_diff_clouds<17] = np.nan
+## Apply threshold from visual analysis
+#cosqm_santa_moon_sun_diff_clouds[cosqm_santa_moon_sun_diff_clouds<17] = np.nan
+
+
+## set to nan values that are color higher than clear by visual analysis.
+dates_color_str = np.array(['2019-08-03', '2019-08-04', '2019-08-07', '2019-08-08', '2019-08-09',
+					'2019-08-10', '2019-08-12', '2019-08-13', '2019-08-19', '2019-08-25','2019-08-26', '2019-09-23', '2019-09-24', '2019-09-25', '2019-09-26', '2019-09-27',
+					'2019-09-28', '2019-09-29', '2019-09-30', '2019-10-01', '2019-10-02', 
+					'2019-10-03', '2019-10-04', '2019-10-07', '2019-10-30', '2019-11-01',
+					'2019-11-27', '2019-11-28', '2019-11-29', '2019-11-30', '2019-12-01',
+					'2020-02-23', '2020-02-24', '2020-05-20', '2020-08-27',])
+
+dates_cosqm_str = np.array([dt.strftime(date, '%Y-%m-%d') for date in dt_santa_moon_sun_clouds])
+dates_color_mask = np.ones(dates_cosqm_str.shape[0], dtype=bool)
+dates_color_mask[np.isin(dates_cosqm_str, dates_color_str)] = False
+
+dates_santa_moon_sun_clouds = dates_santa_moon_sun_clouds[dates_color_mask]
+dt_santa_moon_sun_clouds = dt_santa_moon_sun_clouds[dates_color_mask]
+cosqm_santa_moon_sun_diff_clouds = cosqm_santa_moon_sun_diff_clouds[dates_color_mask]
+
+## Evaluate clear minus colors (to determine if measurement errors)
+plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0]-cosqm_santa_moon_sun_diff_clouds[:,1], c='r', s=10, label='clear-red')
+plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0]-cosqm_santa_moon_sun_diff_clouds[:,2], c='g', s=10, label='clear-green')
+plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0]-cosqm_santa_moon_sun_diff_clouds[:,3], c='b', s=10, label='clear-blue')
+plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0]-cosqm_santa_moon_sun_diff_clouds[:,4], c='y', s=10, label='clear-yellow')
+plt.legend()
+plt.title('ZNSB Santa-Cruz filtered data')
+plt.xlabel('date')
+plt.ylabel('CoSQM magnitude (mag)')
+
+
 
 
 ################
 # Light pollution trends
 ################
 
+## Every night normalized (substracted magnitude) with mean of 1am to 2am data
+d = np.copy(dt_santa_moon_sun_clouds)						#Attention, le timezone est en UTC, ce qui peut causer des problemes pour diviser les nuits ailleurs dans le monde
+c = np.copy(cosqm_santa_moon_sun_diff_clouds)
+c_norm = np.copy(c)
+ddays = np.array([(date.date()-d[0].date()).days for date in d])
+hours = np.array([date.hour for date in d])
+months = np.array([date.month for date in d])
+
+
+for day in np.unique(ddays):
+	d_mask = np.zeros(ddays.shape[0], dtype=bool)
+	d_mask[(ddays == day) & (hours < 12)] = True
+	d_mask[(ddays == day-1) & (hours > 12)] = True 
+	d_mask_mean = d_mask.copy()
+	d_mask_mean[hours != 1] = False
+#	c_mean = np.ma.array(c, mask=np.isnan(c))[d_mask_mean].mean(axis=0)
+	c_mean = np.nanmean(c[d_mask_mean],axis=0)
+	c_norm[d_mask] -= c_mean
+	print(c_mean)
+
+c_norm[c_norm > 10] = np.nan
+plt.scatter(d,c_norm[:,0])
+
+## Normalized ZNSB for each day of week in selected months to see for trends of days
+d = np.copy(dates_santa_moon_sun_clouds)
+
+weekdays_str = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
+months_str = ['January', 'Feburary', 'March', 'April', 'May', 'June', 'July', 'August', 'Septembre', 'October', 'November', 'December']
+weekdays = np.array([ dt.fromtimestamp(timestamp, timezone.utc).weekday() for timestamp in d ])
+markers = ['.', '1', '2', '3', '4', 'o', 's']
+
+hours = np.array([ dt.fromtimestamp(timestamp, timezone.utc).hour+
+	dt.fromtimestamp(timestamp, timezone.utc).minute/60+
+	dt.fromtimestamp(timestamp, timezone.utc).second/3600 for timestamp in d ])
+hours[hours>12]-=24
+
+bands = ['clear', 'red', 'green', 'yellow', 'blue']
+
+
+for b,band in enumerate(bands):
+	fig,axs = plt.subplots(3,4,sharex=True,sharey=True, figsize=(20,12))
+	for month in range(1,13):
+		for i in range(7):
+			months_mask = np.ones(d.shape[0],dtype=bool)
+			months_mask[np.where(months != month)] = False
+			months_mask[np.where(weekdays != i)] = False
+			axs[(month-1)//4,(month-1)%4].scatter(hours[months_mask],c_norm[months_mask,b], s=30, label=weekdays_str[i], marker=markers[i], alpha=0.6)
+		#plt.xlim(-4.5,6.5)
+		#plt.ylim(18,19.25)
+		if month == 1:
+			axs[(month-1)//4,(month-1)%4].legend(loc="upper left")
+		axs[(month-1)//4,(month-1)%4].set_title(months_str[month-1])
+	fig.suptitle(f'ZNSB Santa-Cruz - day of week, {band}', fontsize=24)
+
+	fig.add_subplot(111,frame_on=False)
+	plt.tick_params(labelcolor="none", bottom=False, left=False)
+	plt.xlabel('hour from midnight (h)', fontsize=18)
+	plt.ylabel('CoSQM Magnitude (mag)', fontsize=18)
+	plt.tight_layout()
+	plt.savefig(f'images/santa/trends/nomalized_months_trends_{band}.png')
+
+
 # Per day of week
 # dt.datetime.weekday() is: Monday=0, Tuesday=1... Sunday=6
-d = dates_santa_moon_sun_clouds
+d = np.copy(dates_santa_moon_sun_clouds)
 weekdays = np.array([ dt.fromtimestamp(timestamp, timezone.utc).weekday() for timestamp in d ])
 hours = np.array([ dt.fromtimestamp(timestamp, timezone.utc).hour+
 	dt.fromtimestamp(timestamp, timezone.utc).minute/60+
 	dt.fromtimestamp(timestamp, timezone.utc).second/3600 for timestamp in d ])
 hours[hours>12]-=24
-c = cosqm_santa_moon_sun_diff_clouds
+c = np.copy(cosqm_santa_moon_sun_diff_clouds)
 
 weekdays_str = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
 markers = ['.', '1', '2', '3', '4', 'o', 's']
@@ -252,15 +365,6 @@ plt.ylabel('CoSQM Magnitude (mag)')
 
 
 # Average per month
-d = dates_santa_moon_sun_clouds
-months = np.array([ dt.fromtimestamp(timestamp, timezone.utc).month for timestamp in d ])
-hours = np.array([ dt.fromtimestamp(timestamp, timezone.utc).hour+
-	dt.fromtimestamp(timestamp, timezone.utc).minute/60+
-	dt.fromtimestamp(timestamp, timezone.utc).second/3600 for timestamp in d ])
-hours[hours>12]-=24
-c = cosqm_santa_moon_sun_diff_clouds
-
-months_str = ['January', 'Feburary', 'March', 'April', 'May', 'June', 'July', 'August', 'Septembre', 'october', 'November', 'December']
 markers = ['.', '1', '2', '3', '4', 'o', 's', '*', '+', 'x', 'd', '|']
 
 plt.figure(figsize=[16,9])
@@ -274,6 +378,37 @@ plt.title('ZNSB Santa-Cruz - Clear band per hour of night')
 plt.xlabel('hour from midnight (h)')
 plt.ylabel('CoSQM Magnitude (mag)')
 
+
+
+
+## ZNSB per month per hour of night
+fig,axs = plt.subplots(6)
+months_str = ['January', 'Feburary', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'october', 'November', 'December']
+markers = ['.', '1', '2', '3', '4', 'o', 's', '*', '+', 'x', 'd', '|']
+
+for month in np.unique(months)[:-6]:
+	months_mask = np.ones(d.shape[0],dtype=bool)
+	months_mask[np.where(months != month)] = False 
+	axs[month-1].scatter(hours[months_mask],c_norm[months_mask,0], s=30, label=months_str[month-1], marker=markers[month-1])
+	axs[month-1].set_ylabel(months_str[month-1])
+
+plt.suptitle('ZNSB Santa-Cruz - Clear band per hour of night')
+
+fig,axs = plt.subplots(6)
+for month in np.unique(months)[5:]:
+	months_mask = np.ones(d.shape[0],dtype=bool)
+	months_mask[np.where(months != month)] = False
+	axs[month-7].scatter(hours[months_mask],c_norm[months_mask,0], s=30, label=months_str[month-1], marker=markers[month-1])
+	axs[month-7].set_ylabel(months_str[month-1])
+
+plt.legend()
+plt.suptitle('ZNSB Santa-Cruz - Clear band per hour of night')
+plt.xlabel('hour from midnight (h)')
+plt.ylabel('CoSQM Magnitude (mag)')
+
+
+
+## ZNSB average per month
 plt.figure(figsize=[16,9])
 months_avg = np.zeros((12,5))
 for month in np.unique(months):
@@ -320,7 +455,6 @@ plt.title('ZNSB Santa-Cruz 2019 - average per month per hour of night')
 plt.xlabel('hour from midnight (h)')
 plt.ylabel('CoSQM Magnitude (mag)')
 plt.legend()
-
 
 
 
