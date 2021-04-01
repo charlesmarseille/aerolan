@@ -4,8 +4,10 @@ from datetime import datetime as dt
 from datetime import timezone
 import pandas as pd
 from glob import glob
-from skyfield.api import load, Topos
+from skyfield.api import load, Topos, utc
 from scipy import signal
+
+%matplotlib
 
 ##############################################################################
 ## Function definitions
@@ -20,7 +22,8 @@ def LoadData(path,cache={}):
         try:
             data_server = np.genfromtxt(path, usecols = list(np.arange(2,17)),invalid_raise=False)
             dates_str = np.genfromtxt(path, delimiter = ' ', usecols = [0,1], dtype = 'str')
-            dates_cosqm = np.array([ dt.strptime( dates+times+':+0000', '%Y-%m-%d%H:%M:%S:%z' ).timestamp() for dates, times in dates_str ])
+            dates_cosqm = np.array([ dt.strptime( dates+times, '%Y-%m-%d%H:%M:%S' ).timestamp() for dates, times in dates_str ])
+            
             cache[path] = (data_server, dates_cosqm)
             return data_server, dates_cosqm
         except:
@@ -115,13 +118,28 @@ def SunAngle(timestamp_array, location):
 # 	return  conv_array
 
 
-def CloudDiff(data_array, threshold):
-	diff_array_append = np.array([np.diff(col, append=0) for col in data_array.T]).T
-	diff_array_prepend = np.array([np.diff(col, prepend=0) for col in data_array.T]).T
-	filtered = np.copy(data_array)
-	filtered[np.abs(diff_array_append)>threshold] = np.nan
-	filtered[np.abs(diff_array_prepend)>threshold] = np.nan
-	return filtered
+# def CloudDiff(data_array, threshold):
+# 	diff_array_append = np.array([np.diff(col, append=0) for col in data_array.T]).T
+# 	diff_array_prepend = np.array([np.diff(col, prepend=0) for col in data_array.T]).T
+# 	filtered = np.copy(data_array)
+# 	filtered[np.abs(diff_array_append)>threshold] = np.nan
+# 	filtered[np.abs(diff_array_prepend)>threshold] = np.nan
+# 	return filtered
+
+
+
+def Cloudslidingwindow(data_array, window_size, threshold):
+	da = np.copy(data_array)
+	d = np.lib.stride_tricks.sliding_window_view(data_array, window_shape = window_size).copy()	#start and end values lost. size of array is data_array.shape[0]-2
+	diffs = np.sum(np.diff(d, axis=1), axis=1)/window_size
+	print(d.shape)
+	print(diffs.shape)
+	print(diffs)
+	d[np.abs(diffs)>threshold] = np.nan
+	d = np.insert(d, 0, np.nan)
+	d = np.insert(d, d.shape[0], np.nan)
+	return d
+
 
 
 ##############################################################################
@@ -157,12 +175,13 @@ dates_santa = dates_santa[zeros_mask]
 dt_santa = dt_santa[zeros_mask]
 
 ## Compute moon angles for each timestamp in COSQM data
+print('moon_angles calculation')
 moon_angles = MoonAngle(dates_santa, loc)
 np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce ulterior computing time
-moon_angles = np.loadtxt('cosqm_'+loc_str+'_moon_angles.txt')					#Load already computed angles
+#moon_angles = np.loadtxt('cosqm_'+loc_str+'_moon_angles.txt')					#Load already computed angles
 
 ## Mask values for higher angle than -18deg (astro twilight)
-moon_min_angle = -1
+moon_min_angle = -18
 moon_mask = np.ones(dates_santa.shape[0], bool)
 moon_mask[np.where(moon_angles>+moon_min_angle)[0]] = False
 
@@ -171,9 +190,10 @@ cosqm_santa_moon = cosqm_santa[:,5:10][moon_mask]
 dt_santa_moon = dt_santa[moon_mask]
 #dates_days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(dates[0])).days+1 for date in dates])
 
+print('sun_angles calculation')
 sun_angles = SunAngle(dates_santa_moon, santa_loc)
 np.savetxt('cosqm_'+loc_str+'_sun_angles.txt', sun_angles)
-sun_angles = np.loadtxt('cosqm_'+loc_str+'_sun_angles.txt')					#Load already computed angles
+#sun_angles = np.loadtxt('cosqm_'+loc_str+'_sun_angles.txt')					#Load already computed angles
 
 sun_min_angle = -18
 sun_mask = np.ones(dates_santa_moon.shape[0], bool)
@@ -186,9 +206,9 @@ dt_santa_moon_sun = dt_santa_moon[sun_mask]
 plt.figure(figsize=[16,9])
 plt.scatter(dt_santa, cosqm_santa[:,5], s=30, label='cosqm_santa')
 plt.scatter(dt_santa_moon, cosqm_santa_moon[:,0], s=30, alpha=0.5, label='moon below '+str(moon_min_angle))
-plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=15, alpha=0.5, label='sun below '+str(sun_min_angle))
-plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+6, s=10, alpha=0.2, label='moon angle')
-plt.scatter(dt_santa_moon_sun, sun_angles[sun_mask]/10+6, s=10, alpha=0.5, label='sun angle')
+plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=15, label='sun below '+str(sun_min_angle), c='k')
+plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+23, s=10, label='moon angle')
+plt.scatter(dt_santa_moon_sun, sun_angles[sun_mask]/10+23, s=10, label='sun angle')
 plt.legend(loc=[0,0])
 plt.title('ZNSB Santa-Cruz - Filtered clear band')
 plt.xlabel('date')
@@ -196,7 +216,7 @@ plt.ylabel('CoSQM magnitude (mag)')
 
 
 ## Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
-cosqm_santa_diff = CloudDiff(cosqm_santa_moon_sun, 0.010)
+cosqm_santa_diff = CloudDiff(cosqm_santa_moon_sun, 0.05)
 plt.scatter(dt_santa_moon_sun, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
 
 
@@ -329,16 +349,51 @@ for b,band in enumerate(bands):
 		if month == 1:
 			axs[(month-1)//4,(month-1)%4].legend(loc="upper left")
 		axs[(month-1)//4,(month-1)%4].set_title(months_str[month-1])
-	fig.suptitle(f'ZNSB Santa-Cruz - day of week, {band}', fontsize=24)
+	fig.suptitle(f'Normalized ZNSB Santa-Cruz - day of week, {band}', fontsize=24)
 
 	fig.add_subplot(111,frame_on=False)
 	plt.tick_params(labelcolor="none", bottom=False, left=False)
 	plt.xlabel('hour from midnight (h)', fontsize=18)
 	plt.ylabel('CoSQM Magnitude (mag)', fontsize=18)
 	plt.tight_layout()
+	plt.savefig(f'images/santa/trends/nomalized_months_and_days_trends_{band}.png')
+
+
+
+## Normalized ZNSB for each day of week
+for b,band in enumerate(bands):
+	fig, ax = plt.subplots()
+	for i in range(7):
+		days_mask = weekdays == i
+		ax.scatter(hours[days_mask],c_norm[days_mask,b], s=30, label=weekdays_str[i], marker=markers[i], alpha=0.6)
+	
+	ax.legend()
+	plt.xlabel('hour from midnight (h)', fontsize=10)
+	plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
+	fig.suptitle(f'Normalized ZNSB Santa-Cruz - day of week, {band}', fontsize=15)
+	plt.savefig(f'images/santa/trends/nomalized_weekdays_trends_{band}.png')
+
+
+## Normalized ZNSB for each month
+markers = ['.', '1', '2', '3', '4', 'o', 's', 'p', 'P', '*', 'D', 5]
+for b,band in enumerate(bands):
+	fig, ax = plt.subplots()
+	for i in np.unique(months):
+		months_mask = months == i
+		ax.scatter(hours[months_mask],c_norm[months_mask,b], s=30, label=months_str[i-1], marker=markers[i-1], alpha=0.6)
+	
+	ax.legend()
+	plt.xlabel('hour from midnight (h)', fontsize=10)
+	plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
+	fig.suptitle(f'Normalized ZNSB Santa-Cruz - month, {band}', fontsize=15)
 	plt.savefig(f'images/santa/trends/nomalized_months_trends_{band}.png')
 
 
+
+
+
+
+########################## Not so important graphs
 # Per day of week
 # dt.datetime.weekday() is: Monday=0, Tuesday=1... Sunday=6
 d = np.copy(dates_santa_moon_sun_clouds)
