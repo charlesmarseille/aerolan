@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime as dt
+from datetime import timedelta as td
 from datetime import timezone
 import pandas as pd
 from glob import glob
@@ -83,6 +84,19 @@ def FindClosest(dates_aod,index,path_in):
 
     return cosqm_value2, delta_t
 
+## Cloud screening function
+def Cloudslidingwindow(data_array, window_size, threshold):
+    da=np.copy(data_array)
+    d = np.lib.stride_tricks.sliding_window_view(data_array, window_shape = window_size, axis=0).copy() #start and end values lost. size of array is data_array.shape[0]-2
+    diffs = np.sum(np.abs(np.diff(d, axis=2)), axis=2)/(window_size-1)
+    padd = np.full([1, da.shape[1]], np.nan)
+    for i in range(window_size//2):
+        diffs = np.insert(diffs, 0, padd, axis=0)                     #append nan to start to get same shape as input
+        diffs = np.insert(diffs, diffs.shape[0], padd, axis=0)            #append nan to end to get same shape as input
+    da[diffs>threshold] = np.nan
+    return da
+
+
 ## Moon presence data reduction function and variables
 ts = load.timescale()
 planets = load('de421.bsp')
@@ -94,52 +108,17 @@ santa_loc = earth + Topos('28.472412500N', '16.247361500W')
 
 ## !! Time objects from dt need a timezone (aware dt object) to work with skyfield lib
 ## ex.: time = dt.now(timezone.utc), with an import of datetime.timezone
-def MoonAngle(timestamp_array, location):
-    datetime = np.array([ dt.fromtimestamp(timestamp, timezone.utc) for timestamp in timestamp_array ])
-    t = ts.utc(datetime)
+def MoonAngle(dt_array, location):
+    t = ts.utc(dt_array)
     astrometric = location.at(t).observe(moon)
     alt, _, _ = astrometric.apparent().altaz()
     return alt.degrees
 
-def SunAngle(timestamp_array, location):
-    datetime = np.array([ dt.fromtimestamp(timestamp, timezone.utc) for timestamp in timestamp_array ])
-    t = ts.utc(datetime)
+def SunAngle(dt_array, location):
+    t = ts.utc(dt_array)
     astrometric = location.at(t).observe(sun)
     alt, _, _ = astrometric.apparent().altaz()
     return alt.degrees
-
-## Cloud presence, analytical approach. Square moving filter of triplets, if higher than threshold, set to nan.
-# def CloudTriplets(data_array, kernel_size):
-# 	return np.array([np.convolve(col, np.ones(kernel_size)/kernel_size, mode='same') for col in data_array])
-
-# def CloudTriplets(data_array, kernel_size):   ####not working####
-# 	kernel = np.ones(kernel_size) / kernel_size
-# 	conv_array = np.array([np.convolve(col,kernel, mode='same') / sum(kernel) for col in data_array.T]).T
-# 	return  conv_array
-
-
-# def CloudDiff(data_array, threshold):
-# 	diff_array_append = np.array([np.diff(col, append=0) for col in data_array.T]).T
-# 	diff_array_prepend = np.array([np.diff(col, prepend=0) for col in data_array.T]).T
-# 	filtered = np.copy(data_array)
-# 	filtered[np.abs(diff_array_append)>threshold] = np.nan
-# 	filtered[np.abs(diff_array_prepend)>threshold] = np.nan
-# 	return filtered
-
-
-
-def Cloudslidingwindow(data_array, window_size, threshold):
-	da = np.copy(data_array)
-	d = np.lib.stride_tricks.sliding_window_view(data_array, window_shape = window_size).copy()	#start and end values lost. size of array is data_array.shape[0]-2
-	diffs = np.sum(np.diff(d, axis=1), axis=1)/window_size
-	print(d.shape)
-	print(diffs.shape)
-	print(diffs)
-	d[np.abs(diffs)>threshold] = np.nan
-	d = np.insert(d, 0, np.nan)
-	d = np.insert(d, d.shape[0], np.nan)
-	return d
-
 
 
 ##############################################################################
@@ -164,60 +143,63 @@ paths_santa=sorted(glob(path_santa+"*/*/*.txt"))
 files=np.array([LoadData(path) for path in paths_santa])
 cosqm_santa=np.concatenate(files[:,0])
 dates_santa=np.concatenate(files[:,1])
-dt_santa=np.array([dt.fromtimestamp(date, tz=timezone.utc) for date in dates_santa])
+dt_santa=np.array([dt.fromtimestamp(date, tz=timezone.utc)-td(hours=dt.fromtimestamp(dates_santa[0], tz=timezone.utc).hour) for date in dates_santa])
+### FROM HERE, confirm that dt_santa[0] is at midnight. if not, change local time on computer to UTC.
 
 ## Remove zeros from cosqm measurements (bugs from instruments)
 zeros_mask = np.ones(cosqm_santa.shape[0], dtype=bool)
 for i in range(5,10):
 	zeros_mask[np.where(cosqm_santa[:,i]==0)[0]]=False
-cosqm_santa = cosqm_santa[zeros_mask]
+cosqm_santa = cosqm_santa[zeros_mask][:,5:10]
 dates_santa = dates_santa[zeros_mask]
 dt_santa = dt_santa[zeros_mask]
 
+## Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
+cosqm_santa_diff = Cloudslidingwindow(cosqm_santa, 5, 0.05)
+plt.scatter(dt_santa, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
+
+## threshold from visual analysis (14mag seems reasonable)
+cosqm_santa_diff[cosqm_santa_diff<14] = np.nan
+
 ## Compute moon angles for each timestamp in COSQM data
 print('moon_angles calculation')
-moon_angles = MoonAngle(dates_santa, loc)
+moon_angles = MoonAngle(dt_santa, loc)
 np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce ulterior computing time
 #moon_angles = np.loadtxt('cosqm_'+loc_str+'_moon_angles.txt')					#Load already computed angles
 
 ## Mask values for higher angle than -18deg (astro twilight)
 moon_min_angle = -18
-moon_mask = np.ones(dates_santa.shape[0], bool)
-moon_mask[np.where(moon_angles>+moon_min_angle)[0]] = False
+moon_mask = np.ones(dt_santa.shape[0], bool)
+moon_mask[np.where(moon_angles>moon_min_angle)[0]] = False
 
 dates_santa_moon = dates_santa[moon_mask]
-cosqm_santa_moon = cosqm_santa[:,5:10][moon_mask]
+cosqm_santa_moon = cosqm_santa_diff[moon_mask]
 dt_santa_moon = dt_santa[moon_mask]
 #dates_days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(dates[0])).days+1 for date in dates])
 
 print('sun_angles calculation')
-sun_angles = SunAngle(dates_santa_moon, santa_loc)
+sun_angles = SunAngle(dt_santa_moon, santa_loc)
 np.savetxt('cosqm_'+loc_str+'_sun_angles.txt', sun_angles)
 #sun_angles = np.loadtxt('cosqm_'+loc_str+'_sun_angles.txt')					#Load already computed angles
 
 sun_min_angle = -18
-sun_mask = np.ones(dates_santa_moon.shape[0], bool)
-sun_mask[np.where(sun_angles>+sun_min_angle)[0]] = False
+sun_mask = np.ones(dt_santa_moon.shape[0], bool)
+sun_mask[np.where(sun_angles>sun_min_angle)[0]] = False
 
 dates_santa_moon_sun = dates_santa_moon[sun_mask]
 cosqm_santa_moon_sun = cosqm_santa_moon[sun_mask]
 dt_santa_moon_sun = dt_santa_moon[sun_mask]
 
 plt.figure(figsize=[16,9])
-plt.scatter(dt_santa, cosqm_santa[:,5], s=30, label='cosqm_santa')
+plt.scatter(dt_santa, cosqm_santa[:,0], s=30, label='cosqm_santa')
 plt.scatter(dt_santa_moon, cosqm_santa_moon[:,0], s=30, alpha=0.5, label='moon below '+str(moon_min_angle))
 plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=15, label='sun below '+str(sun_min_angle), c='k')
-plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+23, s=10, label='moon angle')
-plt.scatter(dt_santa_moon_sun, sun_angles[sun_mask]/10+23, s=10, label='sun angle')
+#plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+23, s=10, label='moon angle')
+#plt.scatter(dt_santa_moon_sun, sun_angles[sun_mask]/10+23, s=10, label='sun angle')
 plt.legend(loc=[0,0])
 plt.title('ZNSB Santa-Cruz - Filtered clear band')
 plt.xlabel('date')
 plt.ylabel('CoSQM magnitude (mag)')
-
-
-## Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
-cosqm_santa_diff = CloudDiff(cosqm_santa_moon_sun, 0.05)
-plt.scatter(dt_santa_moon_sun, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
 
 
 #########################
@@ -247,30 +229,24 @@ cloud_mask = np.isin(santa_days, santa_noclouds_days_filtered)
 dates_santa_moon_sun_clouds = dates_santa_moon_sun[cloud_mask]
 dt_santa_moon_sun_clouds = dt_santa_moon_sun[cloud_mask]
 cosqm_santa_moon_sun_clouds = cosqm_santa_moon_sun[cloud_mask]
-cosqm_santa_moon_sun_diff_clouds = cosqm_santa_diff[cloud_mask]
 
 ## Plot cosqm_data filtered for clouds
 plt.figure(figsize=[16,9])
 plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=30, c='b', label='moon and sun filtered')
 plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=20, c='r', label='cloud filter from pictures')
-plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0], s=10, c='k', label='cloud triplets filter+pictures')
 plt.legend(loc=(0,0))
 plt.title('ZNSB Santa-Cruz')
 plt.xlabel('date')
 plt.ylabel('CoSQM magnitude (mag)')
 
-
-## Apply threshold from visual analysis
-#cosqm_santa_moon_sun_diff_clouds[cosqm_santa_moon_sun_diff_clouds<17] = np.nan
-
-
-## set to nan values that are color higher than clear by visual analysis.
+## set to nan values that are color higher than clear by visual analysis, followed by clouded nights by visual analysis
 dates_color_str = np.array(['2019-08-03', '2019-08-04', '2019-08-07', '2019-08-08', '2019-08-09',
 					'2019-08-10', '2019-08-12', '2019-08-13', '2019-08-19', '2019-08-25','2019-08-26', '2019-09-23', '2019-09-24', '2019-09-25', '2019-09-26', '2019-09-27',
 					'2019-09-28', '2019-09-29', '2019-09-30', '2019-10-01', '2019-10-02', 
 					'2019-10-03', '2019-10-04', '2019-10-07', '2019-10-30', '2019-11-01',
-					'2019-11-27', '2019-11-28', '2019-11-29', '2019-11-30', '2019-12-01',
-					'2020-02-23', '2020-02-24', '2020-05-20', '2020-08-27',])
+					'2019-11-27', '2019-11-28', '2019-11-29', '2019-11-30', 
+                    '2019-12-01', '2019-12-25',
+					'2020-02-23', '2020-02-24', '2020-05-20', '2020-08-27'])
 
 dates_cosqm_str = np.array([dt.strftime(date, '%Y-%m-%d') for date in dt_santa_moon_sun_clouds])
 dates_color_mask = np.ones(dates_cosqm_str.shape[0], dtype=bool)
