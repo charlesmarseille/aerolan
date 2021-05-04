@@ -7,6 +7,7 @@ import pandas as pd
 from glob import glob
 from skyfield.api import load, Topos, utc
 from scipy import signal
+from scipy.optimize import curve_fit
 
 %matplotlib
 
@@ -177,6 +178,7 @@ cosqm_santa_moon = cosqm_santa_diff[moon_mask]
 dt_santa_moon = dt_santa[moon_mask]
 #dates_days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(dates[0])).days+1 for date in dates])
 
+## Compute sun angles for each timestamp in COSQM data
 print('sun_angles calculation')
 sun_angles = SunAngle(dt_santa_moon, santa_loc)
 np.savetxt('cosqm_'+loc_str+'_sun_angles.txt', sun_angles)
@@ -186,14 +188,14 @@ sun_min_angle = -18
 sun_mask = np.ones(dt_santa_moon.shape[0], bool)
 sun_mask[np.where(sun_angles>sun_min_angle)[0]] = False
 
-dates_santa_moon_sun = dates_santa_moon[sun_mask]
-cosqm_santa_moon_sun = cosqm_santa_moon[sun_mask]
-dt_santa_moon_sun = dt_santa_moon[sun_mask]
+dates_santa_sun = dates_santa_moon[sun_mask]
+cosqm_santa_sun = cosqm_santa_moon[sun_mask]
+dt_santa_sun = dt_santa_moon[sun_mask]
 
 plt.figure(figsize=[16,9])
 plt.scatter(dt_santa, cosqm_santa[:,0], s=30, label='cosqm_santa')
 plt.scatter(dt_santa_moon, cosqm_santa_moon[:,0], s=30, alpha=0.5, label='moon below '+str(moon_min_angle))
-plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=15, label='sun below '+str(sun_min_angle), c='k')
+plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0], s=15, label='sun below '+str(sun_min_angle), c='k')
 #plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+23, s=10, label='moon angle')
 #plt.scatter(dt_santa_moon_sun, sun_angles[sun_mask]/10+23, s=10, label='sun angle')
 plt.legend(loc=[0,0])
@@ -202,6 +204,8 @@ plt.xlabel('date')
 plt.ylabel('CoSQM magnitude (mag)')
 
 
+
+#!!!following skipped for initial analysis!!!
 #########################
 ## Cloud removal from visual analysis: thumbnails are checked in a file browser and a folder is created with the clear
 ## skies data. The filename is of format YYYY-MM-DD_HH/MM/SS.jpg
@@ -214,59 +218,64 @@ plt.ylabel('CoSQM magnitude (mag)')
 
 #santa_dates_noclouds_str = np.array(glob('cosqm_santa/data/*/*/webcam/*.jpg'))			# Load str from noclouds images
 #np.savetxt('santa_cruz_noclouds_fnames.txt', santa_dates_noclouds_str, fmt='%s')
-santa_dates_noclouds_str = pd.read_csv('santa_cruz_noclouds_fnames.txt', dtype='str').values
-santa_noclouds_dates = np.array([ dt.strptime( date[0][-21:-4], '%Y-%m-%d_%H%M%S' ).timestamp() for date in santa_dates_noclouds_str ])		# Convert images time str to timestamps
-santa_noclouds_days = np.array([ dt.strptime( date[0][-21:-11], '%Y-%m-%d' ).timestamp() for date in santa_dates_noclouds_str ])			# Convert images time str to timestamp days 
+# santa_dates_noclouds_str = pd.read_csv('santa_cruz_noclouds_fnames.txt', dtype='str').values
+# santa_noclouds_dates = np.array([ dt.strptime( date[0][-21:-4], '%Y-%m-%d_%H%M%S' ).timestamp() for date in santa_dates_noclouds_str ])		# Convert images time str to timestamps
+# santa_noclouds_days = np.array([ dt.strptime( date[0][-21:-11], '%Y-%m-%d' ).timestamp() for date in santa_dates_noclouds_str ])			# Convert images time str to timestamp days 
 
-bins = np.arange(santa_noclouds_days.min(),santa_noclouds_days.max(), 24*60*60)		# define complete days for binning
-santa_noclouds_days_hist, santa_noclouds_days_bins = np.histogram(santa_noclouds_days, np.arange(santa_noclouds_days.min(),santa_noclouds_days.max(), 24*60*60)) 		# count number of images per day
-min_images = 20		# minimum number of non clouded images in a day to be considered
-santa_noclouds_days_filtered = santa_noclouds_days_bins[np.argwhere(santa_noclouds_days_hist > min_images)][:,0]			# select only days that have at least min_images non-clouded images
+# bins = np.arange(santa_noclouds_days.min(),santa_noclouds_days.max(), 24*60*60)		# define complete days for binning
+# santa_noclouds_days_hist, santa_noclouds_days_bins = np.histogram(santa_noclouds_days, np.arange(santa_noclouds_days.min(),santa_noclouds_days.max(), 24*60*60)) 		# count number of images per day
+# min_images = 20		# minimum number of non clouded images in a day to be considered
+# santa_noclouds_days_filtered = santa_noclouds_days_bins[np.argwhere(santa_noclouds_days_hist > min_images)][:,0]			# select only days that have at least min_images non-clouded images
 
-## Mask days that were clouded
-santa_days = np.array([ dt.strptime( date.strftime('%Y-%m-%d'), '%Y-%m-%d' ).timestamp() for date in dt_santa_moon_sun ])
-cloud_mask = np.isin(santa_days, santa_noclouds_days_filtered)
-dates_santa_moon_sun_clouds = dates_santa_moon_sun[cloud_mask]
-dt_santa_moon_sun_clouds = dt_santa_moon_sun[cloud_mask]
-cosqm_santa_moon_sun_clouds = cosqm_santa_moon_sun[cloud_mask]
+# ## Mask days that were clouded
+# santa_days = np.array([ dt.strptime( date.strftime('%Y-%m-%d'), '%Y-%m-%d' ).timestamp() for date in dt_santa_moon_sun ])
+# cloud_mask = np.isin(santa_days, santa_noclouds_days_filtered)
+# dates_santa_moon_sun_clouds = dates_santa_moon_sun[cloud_mask]
+# dt_santa_moon_sun_clouds = dt_santa_moon_sun[cloud_mask]
+# cosqm_santa_moon_sun_clouds = cosqm_santa_moon_sun[cloud_mask]
 
-## Plot cosqm_data filtered for clouds
-plt.figure(figsize=[16,9])
-plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=30, c='b', label='moon and sun filtered')
-plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=20, c='r', label='cloud filter from pictures')
-plt.legend(loc=(0,0))
-plt.title('ZNSB Santa-Cruz')
-plt.xlabel('date')
-plt.ylabel('CoSQM magnitude (mag)')
+# ## Plot cosqm_data filtered for clouds
+# plt.figure(figsize=[16,9])
+# plt.scatter(dt_santa_moon_sun, cosqm_santa_moon_sun[:,0], s=30, c='b', label='moon and sun filtered')
+# plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_clouds[:,0], s=20, c='r', label='cloud filter from pictures')
+# plt.legend(loc=(0,0))
+# plt.title('ZNSB Santa-Cruz')
+# plt.xlabel('date')
+# plt.ylabel('CoSQM magnitude (mag)')
+
+################
+#skipped section end
+
 
 ## set to nan values that are color higher than clear by visual analysis, followed by clouded nights by visual analysis
-dates_color_str = np.array(['2019-08-03', '2019-08-04', '2019-08-07', '2019-08-08', '2019-08-09',
-					'2019-08-10', '2019-08-12', '2019-08-13', '2019-08-19', '2019-08-25','2019-08-26', '2019-09-23', '2019-09-24', '2019-09-25', '2019-09-26', '2019-09-27',
-					'2019-09-28', '2019-09-29', '2019-09-30', '2019-10-01', '2019-10-02', 
-					'2019-10-03', '2019-10-04', '2019-10-07', '2019-10-30', '2019-11-01',
-					'2019-11-27', '2019-11-28', '2019-11-29', '2019-11-30', 
-                    '2019-12-01', '2019-12-25',
-					'2020-02-23', '2020-02-24', '2020-05-20', '2020-08-27'])
+dates_color_str = np.array(['2019-07-21', '2019-07-23', '2019-07-25', '2019-07-26', '2019-07-27', '2019-07-29',
+                    '2019-08-03', '2019-08-04', '2019-08-07', '2019-08-08', '2019-08-09', '2019-08-10', '2019-08-12', '2019-08-13', '2019-08-19', '2019-08-25','2019-08-26', 
+                    '2019-09-23', '2019-09-24', '2019-09-25', '2019-09-26', '2019-09-27', '2019-09-28', '2019-09-29', '2019-09-30', 
+                    '2019-10-01', '2019-10-02', '2019-10-03', '2019-10-04', '2019-10-05', '2019-10-07', '2019-10-30', '2019-10-31',  
+                    '2019-11-01', '2019-11-26', '2019-11-27', '2019-11-28', '2019-11-29', '2019-11-30', 
+                    '2019-12-01', '2019-12-02', '2019-12-04', '2019-12-25',
+					'2020-02-23', '2020-02-24', 
+                    '2020-05-20', 
+                    '2020-08-27',
+                    '2021-01-13', '2021-01-14', '2021-01-15', '2021-01-16'])
 
-dates_cosqm_str = np.array([dt.strftime(date, '%Y-%m-%d') for date in dt_santa_moon_sun_clouds])
+dates_cosqm_str = np.array([dt.strftime(date, '%Y-%m-%d') for date in dt_santa_sun])
 dates_color_mask = np.ones(dates_cosqm_str.shape[0], dtype=bool)
 dates_color_mask[np.isin(dates_cosqm_str, dates_color_str)] = False
 
-dates_santa_moon_sun_clouds = dates_santa_moon_sun_clouds[dates_color_mask]
-dt_santa_moon_sun_clouds = dt_santa_moon_sun_clouds[dates_color_mask]
-cosqm_santa_moon_sun_diff_clouds = cosqm_santa_moon_sun_diff_clouds[dates_color_mask]
+dates_santa_sun = dates_santa_sun[dates_color_mask]
+dt_santa_sun = dt_santa_sun[dates_color_mask]
+cosqm_santa_sun = cosqm_santa_sun[dates_color_mask]
 
 ## Evaluate clear minus colors (to determine if measurement errors)
-plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0]-cosqm_santa_moon_sun_diff_clouds[:,1], c='r', s=10, label='clear-red')
-plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0]-cosqm_santa_moon_sun_diff_clouds[:,2], c='g', s=10, label='clear-green')
-plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0]-cosqm_santa_moon_sun_diff_clouds[:,3], c='b', s=10, label='clear-blue')
-plt.scatter(dt_santa_moon_sun_clouds, cosqm_santa_moon_sun_diff_clouds[:,0]-cosqm_santa_moon_sun_diff_clouds[:,4], c='y', s=10, label='clear-yellow')
+plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0]-cosqm_santa_sun[:,1], c='r', s=10, label='clear-red')
+plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0]-cosqm_santa_sun[:,2], c='g', s=10, label='clear-green')
+plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0]-cosqm_santa_sun[:,3], c='b', s=10, label='clear-blue')
+plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0]-cosqm_santa_sun[:,4], c='y', s=10, label='clear-yellow')
 plt.legend()
 plt.title('ZNSB Santa-Cruz filtered data')
 plt.xlabel('date')
 plt.ylabel('CoSQM magnitude (mag)')
-
-
 
 
 ################
@@ -274,13 +283,12 @@ plt.ylabel('CoSQM magnitude (mag)')
 ################
 
 ## Every night normalized (substracted magnitude) with mean of 1am to 2am data
-d = np.copy(dt_santa_moon_sun_clouds)						#Attention, le timezone est en UTC, ce qui peut causer des problemes pour diviser les nuits ailleurs dans le monde
-c = np.copy(cosqm_santa_moon_sun_diff_clouds)
+d = np.copy(dt_santa_sun)						#Attention, le timezone est en UTC, ce qui peut causer des problemes pour diviser les nuits ailleurs dans le monde
+c = np.copy(cosqm_santa_sun)
 c_norm = np.copy(c)
 ddays = np.array([(date.date()-d[0].date()).days for date in d])
 hours = np.array([date.hour for date in d])
 months = np.array([date.month for date in d])
-
 
 for day in np.unique(ddays):
 	d_mask = np.zeros(ddays.shape[0], dtype=bool)
@@ -296,8 +304,9 @@ for day in np.unique(ddays):
 c_norm[c_norm > 10] = np.nan
 plt.scatter(d,c_norm[:,0])
 
-## Normalized ZNSB for each day of week in selected months to see for trends of days
-d = np.copy(dates_santa_moon_sun_clouds)
+
+#Make plots
+d = np.copy(dates_santa_sun)
 
 weekdays_str = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
 months_str = ['January', 'Feburary', 'March', 'April', 'May', 'June', 'July', 'August', 'Septembre', 'October', 'November', 'December']
@@ -312,57 +321,19 @@ hours[hours>12]-=24
 bands = ['clear', 'red', 'green', 'yellow', 'blue']
 
 
+## Normalized ZNSB for all filtered data
 for b,band in enumerate(bands):
-	fig,axs = plt.subplots(3,4,sharex=True,sharey=True, figsize=(20,12))
-	for month in range(1,13):
-		for i in range(7):
-			months_mask = np.ones(d.shape[0],dtype=bool)
-			months_mask[np.where(months != month)] = False
-			months_mask[np.where(weekdays != i)] = False
-			axs[(month-1)//4,(month-1)%4].scatter(hours[months_mask],c_norm[months_mask,b], s=30, label=weekdays_str[i], marker=markers[i], alpha=0.6)
-		#plt.xlim(-4.5,6.5)
-		#plt.ylim(18,19.25)
-		if month == 1:
-			axs[(month-1)//4,(month-1)%4].legend(loc="upper left")
-		axs[(month-1)//4,(month-1)%4].set_title(months_str[month-1])
-	fig.suptitle(f'Normalized ZNSB Santa-Cruz - day of week, {band}', fontsize=24)
+    fig, ax = plt.subplots()
+    ax.scatter(hours,c_norm[:,b], s=30)
+    ax.legend()
+    plt.xlabel('hour from midnight (h)', fontsize=10)
+    plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
+    fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
+    plt.savefig(f'images/santa/trends/nomalized_{band}.png')
 
-	fig.add_subplot(111,frame_on=False)
-	plt.tick_params(labelcolor="none", bottom=False, left=False)
-	plt.xlabel('hour from midnight (h)', fontsize=18)
-	plt.ylabel('CoSQM Magnitude (mag)', fontsize=18)
-	plt.tight_layout()
-	plt.savefig(f'images/santa/trends/nomalized_months_and_days_trends_{band}.png')
+# Fitting of the normalized data to correct for night trend (does not change through year, month or day of week)
 
 
-
-## Normalized ZNSB for each day of week
-for b,band in enumerate(bands):
-	fig, ax = plt.subplots()
-	for i in range(7):
-		days_mask = weekdays == i
-		ax.scatter(hours[days_mask],c_norm[days_mask,b], s=30, label=weekdays_str[i], marker=markers[i], alpha=0.6)
-	
-	ax.legend()
-	plt.xlabel('hour from midnight (h)', fontsize=10)
-	plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
-	fig.suptitle(f'Normalized ZNSB Santa-Cruz - day of week, {band}', fontsize=15)
-	plt.savefig(f'images/santa/trends/nomalized_weekdays_trends_{band}.png')
-
-
-## Normalized ZNSB for each month
-markers = ['.', '1', '2', '3', '4', 'o', 's', 'p', 'P', '*', 'D', 5]
-for b,band in enumerate(bands):
-	fig, ax = plt.subplots()
-	for i in np.unique(months):
-		months_mask = months == i
-		ax.scatter(hours[months_mask],c_norm[months_mask,b], s=30, label=months_str[i-1], marker=markers[i-1], alpha=0.6)
-	
-	ax.legend()
-	plt.xlabel('hour from midnight (h)', fontsize=10)
-	plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
-	fig.suptitle(f'Normalized ZNSB Santa-Cruz - month, {band}', fontsize=15)
-	plt.savefig(f'images/santa/trends/nomalized_months_trends_{band}.png')
 
 
 
@@ -370,6 +341,65 @@ for b,band in enumerate(bands):
 
 
 ########################## Not so important graphs
+
+## Normalized ZNSB for each day of week in selected months to see for trends of days
+for b,band in enumerate(bands):
+    fig,axs = plt.subplots(3,4,sharex=True,sharey=True, figsize=(20,12))
+    for month in range(1,13):
+        for i in range(7):
+            months_mask = np.ones(d.shape[0],dtype=bool)
+            months_mask[np.where(months != month)] = False
+            months_mask[np.where(weekdays != i)] = False
+            axs[(month-1)//4,(month-1)%4].scatter(hours[months_mask],c_norm[months_mask,b], s=30, label=weekdays_str[i], marker=markers[i], alpha=0.6)
+        #plt.xlim(-4.5,6.5)
+        #plt.ylim(18,19.25)
+        if month == 1:
+            axs[(month-1)//4,(month-1)%4].legend(loc="upper left")
+        axs[(month-1)//4,(month-1)%4].set_title(months_str[month-1])
+    fig.suptitle(f'Normalized ZNSB Santa-Cruz - day of week, {band}', fontsize=24)
+
+    fig.add_subplot(111,frame_on=False)
+    plt.tick_params(labelcolor="none", bottom=False, left=False)
+    plt.xlabel('hour from midnight (h)', fontsize=18)
+    plt.ylabel('CoSQM Magnitude (mag)', fontsize=18)
+    plt.tight_layout()
+    plt.savefig(f'images/santa/trends/nomalized_months_and_days_trends_{band}.png')
+
+
+
+## Normalized ZNSB for each day of week
+for b,band in enumerate(bands):
+    fig, ax = plt.subplots()
+    for i in range(7):
+        days_mask = weekdays == i
+        ax.scatter(hours[days_mask],c_norm[days_mask,b], s=30, label=weekdays_str[i], marker=markers[i], alpha=0.6)
+    
+    ax.legend()
+    plt.xlabel('hour from midnight (h)', fontsize=10)
+    plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
+    fig.suptitle(f'Normalized ZNSB Santa-Cruz - day of week, {band}', fontsize=15)
+    plt.savefig(f'images/santa/trends/nomalized_weekdays_trends_{band}.png')
+
+
+## Normalized ZNSB for each month
+markers = ['.', '1', '2', '3', '4', 'o', 's', 'p', 'P', '*', 'D', 5]
+for b,band in enumerate(bands):
+    fig, ax = plt.subplots()
+    for i in np.unique(months):
+        months_mask = months == i
+        ax.scatter(hours[months_mask],c_norm[months_mask,b], s=30, label=months_str[i-1], marker=markers[i-1], alpha=0.6)
+    
+    ax.legend()
+    plt.xlabel('hour from midnight (h)', fontsize=10)
+    plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
+    fig.suptitle(f'Normalized ZNSB Santa-Cruz - month, {band}', fontsize=15)
+    plt.savefig(f'images/santa/trends/nomalized_months_trends_{band}.png')
+
+
+
+
+
+
 # Per day of week
 # dt.datetime.weekday() is: Monday=0, Tuesday=1... Sunday=6
 d = np.copy(dates_santa_moon_sun_clouds)
