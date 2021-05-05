@@ -160,7 +160,7 @@ cosqm_santa_diff = Cloudslidingwindow(cosqm_santa, 5, 0.05)
 plt.scatter(dt_santa, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
 
 ## threshold from visual analysis (14mag seems reasonable)
-cosqm_santa_diff[cosqm_santa_diff<14] = np.nan
+#cosqm_santa_diff[cosqm_santa_diff<16.5] = np.nan
 
 ## Compute moon angles for each timestamp in COSQM data
 print('moon_angles calculation')
@@ -336,30 +336,30 @@ for b,band in enumerate(bands):
 def second_order(x,a,b,c):
     return a*x**2+b*x+c
 
-fit_params_c, _ = curve_fit(second_order, hours[~np.isnan(c_norm[:,0])], c_norm[~np.isnan(c_norm[:,0])][:,0])
-fit_params_r, _ = curve_fit(second_order, hours[~np.isnan(c_norm[:,1])], c_norm[~np.isnan(c_norm[:,1])][:,1])
-fit_params_g, _ = curve_fit(second_order, hours[~np.isnan(c_norm[:,2])], c_norm[~np.isnan(c_norm[:,2])][:,2])
-fit_params_b, _ = curve_fit(second_order, hours[~np.isnan(c_norm[:,3])], c_norm[~np.isnan(c_norm[:,3])][:,3])
-fit_params_y, _ = curve_fit(second_order, hours[~np.isnan(c_norm[:,4])], c_norm[~np.isnan(c_norm[:,4])][:,4])
+fit_params_c, _ = curve_fit(second_order, hours_float[~np.isnan(c_norm[:,0])], c_norm[~np.isnan(c_norm[:,0])][:,0])
+fit_params_r, _ = curve_fit(second_order, hours_float[~np.isnan(c_norm[:,1])], c_norm[~np.isnan(c_norm[:,1])][:,1])
+fit_params_g, _ = curve_fit(second_order, hours_float[~np.isnan(c_norm[:,2])], c_norm[~np.isnan(c_norm[:,2])][:,2])
+fit_params_b, _ = curve_fit(second_order, hours_float[~np.isnan(c_norm[:,3])], c_norm[~np.isnan(c_norm[:,3])][:,3])
+fit_params_y, _ = curve_fit(second_order, hours_float[~np.isnan(c_norm[:,4])], c_norm[~np.isnan(c_norm[:,4])][:,4])
 fit_params = np.array([fit_params_c, fit_params_r, fit_params_g, fit_params_b, fit_params_y]).T
 
-xs = np.linspace(hours.min()-0.5, hours.max()+0.5, 1001)
+xs = np.linspace(hours_float.min()-0.5, hours_float.max()+0.5, 1001)
 
 fig, ax = plt.subplots()
-ax.scatter(hours,c_norm[:,0], s=15, label='normalized ZNSB')
-ax.plot(xs, second_order(xs, fit_params_c[0], fit_params_c[1], fit_params_c[2]), label='second order fit', c='k')
+ax.scatter(hours_float,c_norm[:,3], s=15, label='normalized ZNSB')
+ax.plot(xs, second_order(xs, fit_params_b[0], fit_params_b[1], fit_params_b[2]), label='second order fit', c='k')
 ax.legend()
 plt.xlabel('hour from midnight (h)', fontsize=10)
 plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
-fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
-plt.savefig(f'images/santa/trends/normalized_fitted_{band}.png')
+fig.suptitle(f'Normalized ZNSB Santa-Cruz - BLUE', fontsize=15)
+plt.savefig(f'images/santa/trends/normalized_fitted_BLUE.png')
 
 # Correct filtered data with fit curve
 cosqm_santa_2nd = np.array([second_order(hours, fit_params_c[0], fit_params_c[1], fit_params_c[2]),
-    second_order(hours, fit_params_r[0], fit_params_r[1], fit_params_r[2]),
-    second_order(hours, fit_params_g[0], fit_params_g[1], fit_params_g[2]),
-    second_order(hours, fit_params_b[0], fit_params_b[1], fit_params_b[2]),
-    second_order(hours, fit_params_y[0], fit_params_y[1], fit_params_y[2])]).T
+    second_order(hours_float, fit_params_r[0], fit_params_r[1], fit_params_r[2]),
+    second_order(hours_float, fit_params_g[0], fit_params_g[1], fit_params_g[2]),
+    second_order(hours_float, fit_params_b[0], fit_params_b[1], fit_params_b[2]),
+    second_order(hours_float, fit_params_y[0], fit_params_y[1], fit_params_y[2])]).T
 
 dt_santa_final = np.copy(dt_santa_sun)
 cosqm_santa_final = np.copy(cosqm_santa_sun) - cosqm_santa_2nd
@@ -393,6 +393,7 @@ data_aod_raw = np.genfromtxt(path, delimiter = ',', skip_header = header, usecol
 
 # Find which bands have no data (take mean of bands and find indices diff. than 0)
 data_aod = data_aod_raw[:,np.where(data_aod_raw[0]>=0)[0]]
+data_aod[data_aod < 0] = np.nan
 
 dates_str = np.genfromtxt(path, delimiter = ',', skip_header = header, usecols = [0,1], dtype = str)
 dates_aod = np.array([ dt.strptime( dates+times, '%d:%m:%Y%H:%M:%S' ).timestamp() for dates, times in dates_str ])
@@ -411,8 +412,8 @@ bands_aod = np.genfromtxt(path, delimiter = ',', skip_header = header-1, skip_fo
 
 
 # Plot each band of aod measurements for total data
-for i in range(non_empty_aod[0].shape[0]):
-    plt.scatter(dt_aod, data_aod[:,i], label=bands_aod[non_empty_aod[0,i]], s=0.2)
+for i in range(bands_aod.shape[0]):
+    plt.scatter(dt_aod, data_aod[:,i], label=bands_aod[i], s=0.2)
 plt.legend()
 plt.show()
 
@@ -430,8 +431,8 @@ cosqm_pm = np.zeros((np.unique(ddays_cosqm).shape[0], 5))
 for i,day in enumerate(np.unique(ddays_cosqm)):
     d_mask_am = np.zeros(ddays_cosqm.shape[0], dtype=bool)
     d_mask_pm = np.zeros(ddays_cosqm.shape[0], dtype=bool)
-    d_mask_am[(ddays_cosqm == day) & (hours >= 3) & (hours <= 10)] = True
-    d_mask_pm[(ddays_cosqm == day) & (hours >= 16) & (hours <= 24)] = True
+    d_mask_am[(ddays_cosqm == day) & (hours >= 5) & (hours <= 10)] = True
+    d_mask_pm[(ddays_cosqm == day) & (hours >= 16) & (hours <= 21)] = True
     inds_am = np.where(d_mask_am == True)[0]
     inds_pm = np.where(d_mask_pm == True)[0]
     cosqm_am[i] = np.nanmean(cosqm_santa_final[inds_am],axis=0)
@@ -452,20 +453,15 @@ hours_float[hours_float>12]-=24
 for i,day in enumerate(np.unique(ddays_aod)):
     d_mask_am = np.zeros(ddays_aod.shape[0], dtype=bool)
     d_mask_pm = np.zeros(ddays_aod.shape[0], dtype=bool)
-    d_mask_am[(ddays_aod == day) & (hours_aod <= 10)] = True
-    d_mask_pm[(ddays_aod == day) & (hours_aod >= 15)] = True
+    d_mask_am[(ddays_aod == day) & (hours_aod <= 7)] = True
+    d_mask_pm[(ddays_aod == day) & (hours_aod >= 18)] = True
     inds_am = np.where(d_mask_am == True)[0]
     inds_pm = np.where(d_mask_pm == True)[0]
     aod_am[i] =  np.nanmean(aod[inds_am],axis=0)
     aod_pm[i] =  np.nanmean(aod[inds_pm],axis=0)
-    aod_am[aod_am == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
-    aod_pm[aod_pm == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
+    aod_am[aod_am <= 0] = np.nan                    # remove zeros values from sensor problem (no data?)
+    aod_pm[aod_pm <= 0] = np.nan                    # remove zeros values from sensor problem (no data?)
 
-
-
-
-plt.scatter(np.unique(ddays_cosqm), cosqm_am[:,0]/np.nanmax(cosqm_am[:,0]))
-plt.scatter(np.unique(ddays_aod), aod_am[:,0]/np.nanmax(aod_am[:,0]))
 
 # Find days in aod from cosqm
 same_days_aod_inds = np.isin(np.unique(ddays_aod), np.unique(ddays_cosqm))
@@ -473,16 +469,69 @@ same_days_aod = np.unique(ddays_aod)[same_days_aod_inds]
 
 same_days_cosqm_inds = np.isin(np.unique(ddays_cosqm), np.unique(ddays_aod))
 
-plt.scatter(np.unique(ddays_cosqm), cosqm_am[:,0]/np.nanmax(cosqm_am[:,0]))
-plt.scatter(np.unique(ddays_aod), aod_am[:,0]/np.nanmax(aod_am[:,0]))
+plt.figure()
+plt.title('znsb am and pm values')
+plt.scatter(np.unique(ddays_cosqm), cosqm_am[:,1], label='cosqm_am')
+plt.scatter(np.unique(ddays_cosqm), cosqm_pm[:,1], label='cosqm_pm')
+plt.legend()
 
 
-plt.scatter(aod_am[same_days_aod_inds][:,3], cosqm_am[same_days_cosqm_inds, 1])
+plt.figure()
+plt.title('aod am and pm values')
+plt.scatter(np.unique(ddays_aod), aod_am[:,3], label='aeronet_am')
+plt.scatter(np.unique(ddays_aod), aod_pm[:,3], label='aeronet_pm')
+plt.legend()
 
 
+#Correlation plots for the 4 color bands (R-629nm, G-546nm, B-514nm, Y-562nm)
+plt.figure()
+plt.scatter(aod_am[same_days_aod_inds][:,3], cosqm_am[same_days_cosqm_inds, 1], label='RED - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,3], cosqm_pm[same_days_cosqm_inds, 1], label='RED - PM')
+plt.title('AOD band - 675nm')
+plt.legend()
 
+plt.figure()
+plt.scatter(aod_am[same_days_aod_inds][:,3], cosqm_am[same_days_cosqm_inds, 2], label='GREEN - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,3], cosqm_pm[same_days_cosqm_inds, 2], label='GREEN - PM')
+plt.title('AOD band - 675nm')
+plt.legend()
 
+plt.figure()
+plt.scatter(aod_am[same_days_aod_inds][:,3], cosqm_am[same_days_cosqm_inds, 3], label='BLUE - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,3], cosqm_pm[same_days_cosqm_inds, 3], label='BLUE - PM')
+plt.title('AOD band - 675nm')
+plt.legend()
 
+plt.figure()
+plt.scatter(aod_am[same_days_aod_inds][:,3], cosqm_am[same_days_cosqm_inds, 4], label='YELLOW - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,3], cosqm_pm[same_days_cosqm_inds, 4], label='YELLOW - PM')
+plt.title('AOD band - 675nm')
+plt.legend()
+
+####
+plt.figure()
+plt.scatter(aod_am[same_days_aod_inds][:,4], cosqm_am[same_days_cosqm_inds, 1], label='RED - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,4], cosqm_pm[same_days_cosqm_inds, 1], label='RED - PM')
+plt.title('AOD band - 500nm')
+plt.legend()
+
+plt.figure()
+plt.scatter(aod_am[same_days_aod_inds][:,4], cosqm_am[same_days_cosqm_inds, 2], label='GREEN - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,4], cosqm_pm[same_days_cosqm_inds, 2], label='GREEN - PM')
+plt.title('AOD band - 500nm')
+plt.legend()
+
+plt.figure()
+plt.scatter(aod_am[same_days_aod_inds][:,4], cosqm_am[same_days_cosqm_inds, 3], label='BLUE - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,4], cosqm_pm[same_days_cosqm_inds, 3], label='BLUE - PM')
+plt.title('AOD band - 500nm')
+plt.legend()
+
+plt.figure()
+plt.scatter(aod_am[same_days_aod_inds][:,4], cosqm_am[same_days_cosqm_inds, 4], label='YELLOW - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,4], cosqm_pm[same_days_cosqm_inds, 4], label='YELLOW - PM')
+plt.title('AOD band - 500nm')
+plt.legend()
 
 
 
