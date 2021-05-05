@@ -299,7 +299,6 @@ for day in np.unique(ddays_cosqm):
 #	c_mean = np.ma.array(c, mask=np.isnan(c))[d_mask_mean].mean(axis=0)
 	c_mean = np.nanmean(c[d_mask_mean],axis=0)
 	c_norm[d_mask] -= c_mean
-	print(c_mean)
 
 c_norm[c_norm > 1.8] = np.nan
 plt.scatter(d,c_norm[:,0])
@@ -330,7 +329,7 @@ for b,band in enumerate(bands):
     plt.xlabel('hour from midnight (h)', fontsize=10)
     plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
     fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
-    plt.savefig(f'images/santa/trends/nomalized_{band}.png')
+    plt.savefig(f'images/santa/trends/normalized_{band}.png')
 
 # Fitting of the normalized data to correct for night trend (does not change through year, month or day of week)
 # 2nd order function for fit
@@ -353,7 +352,7 @@ ax.legend()
 plt.xlabel('hour from midnight (h)', fontsize=10)
 plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
 fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
-plt.savefig(f'images/santa/trends/nomalized_fitted_{band}.png')
+plt.savefig(f'images/santa/trends/normalized_fitted_{band}.png')
 
 # Correct filtered data with fit curve
 cosqm_santa_2nd = np.array([second_order(hours, fit_params_c[0], fit_params_c[1], fit_params_c[2]),
@@ -362,16 +361,17 @@ cosqm_santa_2nd = np.array([second_order(hours, fit_params_c[0], fit_params_c[1]
     second_order(hours, fit_params_b[0], fit_params_b[1], fit_params_b[2]),
     second_order(hours, fit_params_y[0], fit_params_y[1], fit_params_y[2])]).T
 
+dt_santa_final = np.copy(dt_santa_sun)
 cosqm_santa_final = np.copy(cosqm_santa_sun) - cosqm_santa_2nd
 
 for b,band in enumerate(bands):
     fig, ax = plt.subplots()
-    ax.scatter(hours, cosqm_santa_final[:,b], s=15, label='normalized ZNSB')
+    ax.scatter(hours_float, cosqm_santa_final[:,b], s=15, label='normalized ZNSB')
     ax.legend()
     plt.xlabel('hour from midnight (h)', fontsize=10)
     plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
     fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
-    plt.savefig(f'images/santa/trends/nomalized_fitted_{band}.png')
+    plt.savefig(f'images/santa/trends/final_znsb_data_{band}.png')
 
 
 ##########################
@@ -389,31 +389,27 @@ for b,band in enumerate(bands):
 cols = np.arange(4, 26)
 path = 'cosqm_santa/20190601_20210131_Santa_Cruz_Tenerife.lev10'
 header = 7
-data_aod = np.genfromtxt(path, delimiter = ',', skip_header = header, usecols = cols)
-data_aod[data_aod < 0] = 0
+data_aod_raw = np.genfromtxt(path, delimiter = ',', skip_header = header, usecols = cols)
+
+# Find which bands have no data (take mean of bands and find indices diff. than 0)
+data_aod = data_aod_raw[:,np.where(data_aod_raw[0]>=0)[0]]
 
 dates_str = np.genfromtxt(path, delimiter = ',', skip_header = header, usecols = [0,1], dtype = str)
 dates_aod = np.array([ dt.strptime( dates+times, '%d:%m:%Y%H:%M:%S' ).timestamp() for dates, times in dates_str ])
 dt_aod = np.array([ dt.strptime( dates+times, '%d:%m:%Y%H:%M:%S' ) for dates, times in dates_str ])
 
 
-BANDS = ['AOD_1640nm', 'AOD_1020nm', 'AOD_870nm', 'AOD_865nm', 'AOD_779nm',
-    'AOD_675nm', 'AOD_667nm', 'AOD_620nm', 'AOD_560nm', 'AOD_555nm',
-    'AOD_551nm', 'AOD_532nm', 'AOD_531nm', 'AOD_510nm', 'AOD_500nm',
-    'AOD_490nm', 'AOD_443nm', 'AOD_440nm', 'AOD_412nm', 'AOD_400nm',
-    'AOD_380nm', 'AOD_340nm']
+#BANDS = ['AOD_1640nm', 'AOD_1020nm', 'AOD_870nm', 'AOD_865nm', 'AOD_779nm',
+#    'AOD_675nm', 'AOD_667nm', 'AOD_620nm', 'AOD_560nm', 'AOD_555nm',
+#    'AOD_551nm', 'AOD_532nm', 'AOD_531nm', 'AOD_510nm', 'AOD_500nm',
+#    'AOD_490nm', 'AOD_443nm', 'AOD_440nm', 'AOD_412nm', 'AOD_400nm',
+#    'AOD_380nm', 'AOD_340nm']
 
-bands_aod = np.genfromtxt(path, delimiter = ',', skip_header = header-1, skip_footer = len(data_aod), usecols = cols, dtype = str)
-
-# Find which bands have no data (take mean of bands and find indices diff. than 0)
-means = np.mean(data_aod, axis = 0)
-non_empty_aod = np.array(np.nonzero(means))
-data_aod = data_aod[:,non_empty_aod[0]]
+bands_aod = np.genfromtxt(path, delimiter = ',', skip_header = header-1, skip_footer = len(data_aod_raw), usecols = cols, dtype = str)[np.where(data_aod_raw[0]>=0)[0]]
+#non empty bands:['AOD_1640nm', 'AOD_1020nm', 'AOD_870nm', 'AOD_675nm', 'AOD_500nm',
+#       'AOD_440nm', 'AOD_380nm']
 
 
-#########
-# GRAPHS
-#########
 # Plot each band of aod measurements for total data
 for i in range(non_empty_aod[0].shape[0]):
     plt.scatter(dt_aod, data_aod[:,i], label=bands_aod[non_empty_aod[0,i]], s=0.2)
@@ -421,28 +417,73 @@ plt.legend()
 plt.show()
 
 
-d = np.copy(dt_aod)              #Attention, le timezone est en UTC, ce qui peut causer des problemes pour diviser les nuits ailleurs dans le monde
+#############
+# CORRELATION
+#############
+
+
+# Selection of filtered and corrected ZNSB values: all data from noon to 10pm for aod_pm, all data from 3am till noon
+cosqm_am = np.zeros((np.unique(ddays_cosqm).shape[0], 5))
+cosqm_pm = np.zeros((np.unique(ddays_cosqm).shape[0], 5))
+
+
+for i,day in enumerate(np.unique(ddays_cosqm)):
+    d_mask_am = np.zeros(ddays_cosqm.shape[0], dtype=bool)
+    d_mask_pm = np.zeros(ddays_cosqm.shape[0], dtype=bool)
+    d_mask_am[(ddays_cosqm == day) & (hours >= 3) & (hours <= 10)] = True
+    d_mask_pm[(ddays_cosqm == day) & (hours >= 16) & (hours <= 24)] = True
+    inds_am = np.where(d_mask_am == True)[0]
+    inds_pm = np.where(d_mask_pm == True)[0]
+    cosqm_am[i] = np.nanmean(cosqm_santa_final[inds_am],axis=0)
+    cosqm_pm[i] = np.nanmean(cosqm_santa_final[inds_pm],axis=0)
+    cosqm_am[cosqm_am == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
+    cosqm_pm[cosqm_pm == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
+
+
+# Selection of AOD values: all data from 3pm to midnight for aod_pm, all data from midnight till 10am   
 aod = np.copy(data_aod)
-ddays = np.array([(date.date()-d[0].date()).days for date in d])
-hours = np.array([date.hour for date in d])
+ddays_aod = np.array([(date.date()-dt_aod[0].date()).days for date in dt_aod])       #Attention, le timezone est en UTC, ce qui peut causer des problemes pour diviser les nuits ailleurs dans le monde
+hours_aod = np.array([date.hour for date in dt_aod])
 aod_am = np.zeros((np.unique(ddays).shape[0], aod.shape[1]))
 aod_pm = np.zeros((np.unique(ddays).shape[0], aod.shape[1]))
+hours_aodfloat = np.array([ time.hour + time.minute/60 + time.second/3600 for time in dt_aod])
+hours_float[hours_float>12]-=24
 
-for i,day in enumerate(np.unique(ddays)):
-    d_mask_am = np.zeros(ddays.shape[0], dtype=bool)
-    d_mask_pm = np.zeros(ddays.shape[0], dtype=bool)
-    d_mask_am[(ddays == day) & (hours <= 10)] = True
-    d_mask_pm[(ddays == day) & (hours >= 15)] = True
+for i,day in enumerate(np.unique(ddays_aod)):
+    d_mask_am = np.zeros(ddays_aod.shape[0], dtype=bool)
+    d_mask_pm = np.zeros(ddays_aod.shape[0], dtype=bool)
+    d_mask_am[(ddays_aod == day) & (hours_aod <= 10)] = True
+    d_mask_pm[(ddays_aod == day) & (hours_aod >= 15)] = True
     inds_am = np.where(d_mask_am == True)[0]
     inds_pm = np.where(d_mask_pm == True)[0]
     aod_am[i] =  np.nanmean(aod[inds_am],axis=0)
     aod_pm[i] =  np.nanmean(aod[inds_pm],axis=0)
     aod_am[aod_am == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
     aod_pm[aod_pm == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
-    
 
-hours_float = np.array([ time.hour + time.minute/60 + time.second/3600 for time in d ])
-hours_float[hours_float>12]-=24
+
+
+
+plt.scatter(np.unique(ddays_cosqm), cosqm_am[:,0]/np.nanmax(cosqm_am[:,0]))
+plt.scatter(np.unique(ddays_aod), aod_am[:,0]/np.nanmax(aod_am[:,0]))
+
+# Find days in aod from cosqm
+same_days_aod_inds = np.isin(np.unique(ddays_aod), np.unique(ddays_cosqm))
+same_days_aod = np.unique(ddays_aod)[same_days_aod_inds]
+
+same_days_cosqm_inds = np.isin(np.unique(ddays_cosqm), np.unique(ddays_aod))
+
+plt.scatter(np.unique(ddays_cosqm), cosqm_am[:,0]/np.nanmax(cosqm_am[:,0]))
+plt.scatter(np.unique(ddays_aod), aod_am[:,0]/np.nanmax(aod_am[:,0]))
+
+
+plt.scatter(aod_am[same_days_aod_inds][:,3], cosqm_am[same_days_cosqm_inds, 1])
+
+
+
+
+
+
 
 
 
