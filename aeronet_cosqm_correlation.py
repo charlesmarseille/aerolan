@@ -8,6 +8,7 @@ from glob import glob
 from skyfield.api import load, Topos, utc
 from scipy import signal
 from scipy.optimize import curve_fit
+from matplotlib.colors import LogNorm
 
 %matplotlib
 
@@ -111,6 +112,7 @@ santa_loc = earth + Topos('28.472412500N', '16.247361500W')
 ## ex.: time = dt.now(timezone.utc), with an import of datetime.timezone
 def MoonAngle(dt_array, location):
     t = ts.utc(dt_array)
+    print(t.utc_strftime())
     astrometric = location.at(t).observe(moon)
     alt, _, _ = astrometric.apparent().altaz()
     return alt.degrees
@@ -169,7 +171,7 @@ np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce
 #moon_angles = np.loadtxt('cosqm_'+loc_str+'_moon_angles.txt')					#Load already computed angles
 
 ## Mask values for higher angle than -18deg (astro twilight)
-moon_min_angle = -18
+moon_min_angle = -2
 moon_mask = np.ones(dt_santa.shape[0], bool)
 moon_mask[np.where(moon_angles>moon_min_angle)[0]] = False
 
@@ -192,6 +194,7 @@ dates_santa_sun = dates_santa_moon[sun_mask]
 cosqm_santa_sun = cosqm_santa_moon[sun_mask]
 dt_santa_sun = dt_santa_moon[sun_mask]
 
+
 plt.figure(figsize=[16,9])
 plt.scatter(dt_santa, cosqm_santa[:,0], s=30, label='cosqm_santa')
 plt.scatter(dt_santa_moon, cosqm_santa_moon[:,0], s=30, alpha=0.5, label='moon below '+str(moon_min_angle))
@@ -204,6 +207,63 @@ plt.xlabel('date')
 plt.ylabel('CoSQM magnitude (mag)')
 
 
+
+#hist2d#
+#raw without clouds
+hours_float_raw = np.array([ dt.fromtimestamp(timestamp).hour+                    #WATCH OUT FOR TIMEZONE HERE!
+    dt.fromtimestamp(timestamp).minute/60+
+    dt.fromtimestamp(timestamp).second/3600 for timestamp in dates_santa ])
+hours_float_raw[hours_float_raw>12]-=24
+
+plt.figure(figsize=[12,8])
+plt.hist2d(hours_float_raw, cosqm_santa[:,0], 200, cmap='inferno')
+plt.hist2d(hours_float_raw, cosqm_santa[:,0], 200, cmap='inferno', norm=LogNorm())
+plt.ylim(15,21)
+plt.title('ZNSB - no filter - clear')
+plt.xlabel('hour')
+plt.ylabel('CoSQM magnitude')
+
+#clouds filter
+hours_float_diff = np.array([ dt.fromtimestamp(timestamp).hour+                    #WATCH OUT FOR TIMEZONE HERE!
+    dt.fromtimestamp(timestamp).minute/60+
+    dt.fromtimestamp(timestamp).second/3600 for timestamp in dates_santa ])
+hours_float_diff[hours_float_diff>12]-=24
+
+plt.figure(figsize=[12,8])
+plt.hist2d(hours_float_diff[np.isfinite(cosqm_santa_diff)[:,0]], cosqm_santa_diff[:,0][np.isfinite(cosqm_santa_diff)[:,0]], 200, cmap='inferno')
+plt.hist2d(hours_float_diff[np.isfinite(cosqm_santa_diff)[:,0]], cosqm_santa_diff[:,0][np.isfinite(cosqm_santa_diff)[:,0]], 200, cmap='inferno', norm=LogNorm())
+plt.ylim(15,21)
+plt.title('ZNSB - filter: clouds+variance - clear')
+plt.xlabel('hour')
+plt.ylabel('CoSQM magnitude')
+
+#moon filter
+hours_float_moon = np.array([ dt.fromtimestamp(timestamp).hour+                    #WATCH OUT FOR TIMEZONE HERE!
+    dt.fromtimestamp(timestamp).minute/60+
+    dt.fromtimestamp(timestamp).second/3600 for timestamp in dates_santa_moon ])
+hours_float_moon[hours_float_moon>12]-=24
+
+plt.figure(figsize=[12,8])
+plt.hist2d(hours_float_moon[np.isfinite(cosqm_santa_moon)[:,0]], cosqm_santa_moon[:,0][np.isfinite(cosqm_santa_moon)[:,0]], 200, cmap='inferno')
+plt.hist2d(hours_float_moon[np.isfinite(cosqm_santa_moon)[:,0]], cosqm_santa_moon[:,0][np.isfinite(cosqm_santa_moon)[:,0]], 200, cmap='inferno', norm=LogNorm())
+plt.ylim(15,21)
+plt.title('ZNSB - filter: moon - clear')
+plt.xlabel('hour')
+plt.ylabel('CoSQM magnitude')
+
+#sun filter
+hours_float_sun = np.array([ dt.fromtimestamp(timestamp).hour+                    #WATCH OUT FOR TIMEZONE HERE!
+    dt.fromtimestamp(timestamp).minute/60+
+    dt.fromtimestamp(timestamp).second/3600 for timestamp in dates_santa_sun ])
+hours_float_sun[hours_float_sun>12]-=24
+
+plt.figure(figsize=[12,8])
+plt.hist2d(hours_float_sun[np.isfinite(cosqm_santa_sun)[:,0]], cosqm_santa_sun[:,0][np.isfinite(cosqm_santa_sun)[:,0]], 200, cmap='inferno')
+plt.hist2d(hours_float_sun[np.isfinite(cosqm_santa_sun)[:,0]], cosqm_santa_sun[:,0][np.isfinite(cosqm_santa_sun)[:,0]], 200, cmap='inferno', norm=LogNorm())
+plt.ylim(15,21)
+plt.title('ZNSB - filter: sun - clear')
+plt.xlabel('hour')
+plt.ylabel('CoSQM magnitude')
 
 #!!!following skipped for initial analysis!!!
 #########################
@@ -324,12 +384,22 @@ bands = ['clear', 'red', 'green', 'yellow', 'blue']
 ## Normalized ZNSB for all filtered data
 for b,band in enumerate(bands):
     fig, ax = plt.subplots()
-    ax.scatter(hours_float,c_norm[:,b], s=30)
+    ax.scatter(hours_float,c_norm[:,b], s=10, label=band)
     ax.legend()
     plt.xlabel('hour from midnight (h)', fontsize=10)
     plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
     fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
     plt.savefig(f'images/santa/trends/normalized_{band}.png')
+
+
+#2d hist
+plt.figure(figsize=[12,8])
+plt.hist2d(hours_float[np.isfinite(c_norm)[:,0]], c_norm[:,0][np.isfinite(c_norm)[:,0]], 200, cmap='inferno')
+plt.hist2d(hours_float[np.isfinite(c_norm)[:,0]], c_norm[:,0][np.isfinite(c_norm)[:,0]], 200, cmap='inferno', norm=LogNorm())
+plt.ylim(-1,0.75)
+plt.title('ZNSB - Normalized 1-2am - clear')
+plt.xlabel('hour')
+plt.ylabel('CoSQM normalized magnitude')
 
 # Fitting of the normalized data to correct for night trend (does not change through year, month or day of week)
 # 2nd order function for fit
@@ -354,6 +424,16 @@ plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
 fig.suptitle(f'Normalized ZNSB Santa-Cruz - BLUE', fontsize=15)
 plt.savefig(f'images/santa/trends/normalized_fitted_BLUE.png')
 
+#hist 2d
+plt.figure(figsize=[12,8])
+plt.hist2d(hours_float[np.isfinite(c_norm)[:,0]], c_norm[:,0][np.isfinite(c_norm)[:,0]], 200, cmap='inferno')
+plt.hist2d(hours_float[np.isfinite(c_norm)[:,0]], c_norm[:,0][np.isfinite(c_norm)[:,0]], 200, cmap='inferno', norm=LogNorm())
+plt.plot(xs, second_order(xs, fit_params_c[0], fit_params_c[1], fit_params_c[2]), label='second order fit', c='c')
+plt.ylim(-1,0.75)
+plt.title('ZNSB - Normalized 1-2am - clear')
+plt.xlabel('hour')
+plt.ylabel('CoSQM normalized magnitude')
+
 # Correct filtered data with fit curve
 cosqm_santa_2nd = np.array([second_order(hours, fit_params_c[0], fit_params_c[1], fit_params_c[2]),
     second_order(hours_float, fit_params_r[0], fit_params_r[1], fit_params_r[2]),
@@ -372,6 +452,15 @@ for b,band in enumerate(bands):
     plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
     fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
     plt.savefig(f'images/santa/trends/final_znsb_data_{band}.png')
+
+#hist 2d
+plt.figure(figsize=[12,8])
+plt.hist2d(hours_float[np.isfinite(cosqm_santa_final)[:,2]], cosqm_santa_final[:,2][np.isfinite(cosqm_santa_final)[:,2]], 200, cmap='inferno')
+plt.hist2d(hours_float[np.isfinite(cosqm_santa_final)[:,2]], cosqm_santa_final[:,2][np.isfinite(cosqm_santa_final)[:,2]], 200, cmap='inferno', norm=LogNorm())
+#plt.ylim(-1,0.75)
+plt.title('ZNSB - Normalized final - clear')
+plt.xlabel('hour')
+plt.ylabel('CoSQM normalized magnitude')
 
 
 ##########################
@@ -466,33 +555,35 @@ for i,day in enumerate(np.unique(ddays_aod)):
 # Find days in aod from cosqm
 same_days_aod_inds = np.isin(np.unique(ddays_aod), np.unique(ddays_cosqm))
 same_days_aod = np.unique(ddays_aod)[same_days_aod_inds]
-
 same_days_cosqm_inds = np.isin(np.unique(ddays_cosqm), np.unique(ddays_aod))
 
 plt.figure()
-plt.title('znsb am and pm values')
-plt.scatter(np.unique(ddays_cosqm), cosqm_am[:,1], label='cosqm_am')
-plt.scatter(np.unique(ddays_cosqm), cosqm_pm[:,1], label='cosqm_pm')
+plt.title('ZNSB dusk and dawn values - Blue')
+plt.scatter(np.unique(ddays_cosqm), cosqm_am[:,3], label='cosqm_am', s=15)
+plt.scatter(np.unique(ddays_cosqm), cosqm_pm[:,3], label='cosqm_pm', s=15)
+plt.xlabel('days from july 2019')
+plt.ylabel('CoSQM Magnitudes (mag)')
 plt.legend()
 
-
 plt.figure()
-plt.title('aod am and pm values')
-plt.scatter(np.unique(ddays_aod), aod_am[:,3], label='aeronet_am')
-plt.scatter(np.unique(ddays_aod), aod_pm[:,3], label='aeronet_pm')
+plt.title('AOD dusk and dawn values')
+plt.scatter(np.unique(ddays_aod), aod_am[:,3], label='aeronet_am', s=15)
+plt.scatter(np.unique(ddays_aod), aod_pm[:,3], label='aeronet_pm', s=15)
+plt.xlabel('days from july 2019')
+plt.ylabel('AOD')
 plt.legend()
 
 
 #Correlation plots for the 4 color bands (R-629nm, G-546nm, B-514nm, Y-562nm)
 plt.figure()
-plt.scatter(aod_am[same_days_aod_inds][:,3], cosqm_am[same_days_cosqm_inds, 1], label='RED - AM')
-plt.scatter(aod_pm[same_days_aod_inds][:,3], cosqm_pm[same_days_cosqm_inds, 1], label='RED - PM')
+plt.scatter(aod_am[same_days_aod_inds][:,1], cosqm_am[same_days_cosqm_inds, 1], label='RED - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,1], cosqm_pm[same_days_cosqm_inds, 1], label='RED - PM')
 plt.title('AOD band - 675nm')
 plt.legend()
 
 plt.figure()
-plt.scatter(aod_am[same_days_aod_inds][:,3], cosqm_am[same_days_cosqm_inds, 2], label='GREEN - AM')
-plt.scatter(aod_pm[same_days_aod_inds][:,3], cosqm_pm[same_days_cosqm_inds, 2], label='GREEN - PM')
+plt.scatter(aod_am[same_days_aod_inds][:,1], cosqm_am[same_days_cosqm_inds, 2], label='GREEN - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,1], cosqm_pm[same_days_cosqm_inds, 2], label='GREEN - PM')
 plt.title('AOD band - 675nm')
 plt.legend()
 
@@ -510,26 +601,26 @@ plt.legend()
 
 ####
 plt.figure()
-plt.scatter(aod_am[same_days_aod_inds][:,4], cosqm_am[same_days_cosqm_inds, 1], label='RED - AM')
-plt.scatter(aod_pm[same_days_aod_inds][:,4], cosqm_pm[same_days_cosqm_inds, 1], label='RED - PM')
+plt.scatter(aod_am[same_days_aod_inds][:,1], cosqm_am[same_days_cosqm_inds, 1], label='RED - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,1], cosqm_pm[same_days_cosqm_inds, 1], label='RED - PM')
 plt.title('AOD band - 500nm')
 plt.legend()
 
 plt.figure()
-plt.scatter(aod_am[same_days_aod_inds][:,4], cosqm_am[same_days_cosqm_inds, 2], label='GREEN - AM')
-plt.scatter(aod_pm[same_days_aod_inds][:,4], cosqm_pm[same_days_cosqm_inds, 2], label='GREEN - PM')
+plt.scatter(aod_am[same_days_aod_inds][:,1], cosqm_am[same_days_cosqm_inds, 2], label='GREEN - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,1], cosqm_pm[same_days_cosqm_inds, 2], label='GREEN - PM')
 plt.title('AOD band - 500nm')
 plt.legend()
 
 plt.figure()
-plt.scatter(aod_am[same_days_aod_inds][:,4], cosqm_am[same_days_cosqm_inds, 3], label='BLUE - AM')
-plt.scatter(aod_pm[same_days_aod_inds][:,4], cosqm_pm[same_days_cosqm_inds, 3], label='BLUE - PM')
+plt.scatter(aod_am[same_days_aod_inds][:,1], cosqm_am[same_days_cosqm_inds, 3], label='BLUE - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,1], cosqm_pm[same_days_cosqm_inds, 3], label='BLUE - PM')
 plt.title('AOD band - 500nm')
 plt.legend()
 
 plt.figure()
-plt.scatter(aod_am[same_days_aod_inds][:,4], cosqm_am[same_days_cosqm_inds, 4], label='YELLOW - AM')
-plt.scatter(aod_pm[same_days_aod_inds][:,4], cosqm_pm[same_days_cosqm_inds, 4], label='YELLOW - PM')
+plt.scatter(aod_am[same_days_aod_inds][:,1], cosqm_am[same_days_cosqm_inds, 4], label='YELLOW - AM')
+plt.scatter(aod_pm[same_days_aod_inds][:,1], cosqm_pm[same_days_cosqm_inds, 4], label='YELLOW - PM')
 plt.title('AOD band - 500nm')
 plt.legend()
 
