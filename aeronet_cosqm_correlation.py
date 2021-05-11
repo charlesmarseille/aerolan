@@ -23,12 +23,10 @@ def LoadData(path,cache={}):
         return cache[path]
     else:
         try:
-            data_server = np.genfromtxt(path, usecols = list(np.arange(2,17)),invalid_raise=False)
-            dates_str = np.genfromtxt(path, delimiter = ' ', usecols = [0,1], dtype = 'str')
-            dates_cosqm = np.array([ dt.strptime( dates+times, '%Y-%m-%d%H:%M:%S' ).timestamp() for dates, times in dates_str ])
-            
-            cache[path] = (data_server, dates_cosqm)
-            return data_server, dates_cosqm
+            data = pd.read_csv(path, delimiter=' ', names=['Date', 'Time', 'Lat', 'Lon', 'Alt', 'Temp', 'Wait', 'Sqm0', 'Sqm1', 'Sqm2', 'Sqm3', 'Sqm4', 'Sbcals0', 'Sbcals1', 'Sbcals2', 'Sbcals3', 'Sbcals4'])
+			data['Datetime'] = pd.to_datetime(data['Date']+'T'+data['Time'], utc=True)        
+            cache[path] = data
+            return data
         except:
             print('********error*********', path)
 
@@ -95,7 +93,7 @@ def Cloudslidingwindow(data_array, window_size, threshold):
     for i in range(window_size//2):
         diffs = np.insert(diffs, 0, padd, axis=0)                     #append nan to start to get same shape as input
         diffs = np.insert(diffs, diffs.shape[0], padd, axis=0)            #append nan to end to get same shape as input
-    da[diffs>threshold] = np.nan
+    da[diffs>threshold/(window_size-1)] = np.nan
     return da
 
 
@@ -112,7 +110,6 @@ santa_loc = earth + Topos('28.472412500N', '16.247361500W')
 ## ex.: time = dt.now(timezone.utc), with an import of datetime.timezone
 def MoonAngle(dt_array, location):
     t = ts.utc(dt_array)
-    print(t.utc_strftime())
     astrometric = location.at(t).observe(moon)
     alt, _, _ = astrometric.apparent().altaz()
     return alt.degrees
@@ -141,24 +138,24 @@ loc = santa_loc
 loc_str = 'santa'
 
 ## find all paths of files in root directory
-paths_santa=sorted(glob(path_santa+"*/*/*.txt"))
+paths_santa = sorted(glob(path_santa+"*/*/*.txt"))
+files = pd.concat([LoadData(path) for path in paths_santa], ignore_index=True)
+cosqm_santa = files[['Sqm0', 'Sqm1', 'Sqm2', 'Sqm3', 'Sqm4']].values
+dt_santa = files['Datetime']
 
-files=np.array([LoadData(path) for path in paths_santa])
-cosqm_santa=np.concatenate(files[:,0])
-dates_santa=np.concatenate(files[:,1])
-dt_santa=np.array([dt.fromtimestamp(date, tz=timezone.utc)-td(hours=dt.fromtimestamp(dates_santa[0], tz=timezone.utc).hour) for date in dates_santa])
-### FROM HERE, confirm that dt_santa[0] is at midnight. if not, change local time on computer to UTC.
+### if day is wanted: dt_santa_day = dt_santa.dt.day
+### if interval wanted: inds = (dt_santa.dt.date == np.array('2020-01-21',dtype='datetime64[D]')) | (dt_santa.dt.date == np.array('2020-01-22',dtype='datetime64[D]'))
+### work on specific night interval: inds = (dt_santa.values > np.array('2020-01-21T12',dtype='datetime64[ns]')) & (dt_santa.values < np.array('2020-01-22T12',dtype='datetime64[ns]'))
 
 ## Remove zeros from cosqm measurements (bugs from instruments)
-zeros_mask = np.ones(cosqm_santa.shape[0], dtype=bool)
-for i in range(5,10):
-	zeros_mask[np.where(cosqm_santa[:,i]==0)[0]]=False
-cosqm_santa = cosqm_santa[zeros_mask][:,5:10]
-dates_santa = dates_santa[zeros_mask]
+zeros_mask = (cosqm_santa!=0).all(1)
+cosqm_santa = cosqm_santa[zeros_mask]
 dt_santa = dt_santa[zeros_mask]
 
 ## Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
-cosqm_santa_diff = Cloudslidingwindow(cosqm_santa, 5, 0.05)
+slide_threshold = 0.1
+slide_window_size = 5
+cosqm_santa_diff = Cloudslidingwindow(cosqm_santa, slide_window_size, slide_threshold)
 plt.scatter(dt_santa, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
 
 ## threshold from visual analysis (14mag seems reasonable)
@@ -172,12 +169,10 @@ np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce
 
 ## Mask values for higher angle than -18deg (astro twilight)
 moon_min_angle = -2
-moon_mask = np.ones(dt_santa.shape[0], bool)
-moon_mask[np.where(moon_angles>moon_min_angle)[0]] = False
+moon_mask = moon_angles<moon_min_angle
 
-dates_santa_moon = dates_santa[moon_mask]
 cosqm_santa_moon = cosqm_santa_diff[moon_mask]
-dt_santa_moon = dt_santa[moon_mask]
+dt_santa_moon = dt_santa[moon_mask].reset_index(drop=True)
 #dates_days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(dates[0])).days+1 for date in dates])
 
 ## Compute sun angles for each timestamp in COSQM data
@@ -187,12 +182,10 @@ np.savetxt('cosqm_'+loc_str+'_sun_angles.txt', sun_angles)
 #sun_angles = np.loadtxt('cosqm_'+loc_str+'_sun_angles.txt')					#Load already computed angles
 
 sun_min_angle = -18
-sun_mask = np.ones(dt_santa_moon.shape[0], bool)
-sun_mask[np.where(sun_angles>sun_min_angle)[0]] = False
+sun_mask = sun_angles<sun_min_angle
 
-dates_santa_sun = dates_santa_moon[sun_mask]
 cosqm_santa_sun = cosqm_santa_moon[sun_mask]
-dt_santa_sun = dt_santa_moon[sun_mask]
+dt_santa_sun = dt_santa_moon[sun_mask].reset_index(drop=True)
 
 
 plt.figure(figsize=[16,9])
