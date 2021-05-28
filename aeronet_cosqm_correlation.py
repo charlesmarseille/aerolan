@@ -10,6 +10,8 @@ from skyfield.almanac import find_discrete, risings_and_settings
 from scipy import signal
 from scipy.optimize import curve_fit
 from matplotlib.colors import LogNorm
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 
 %matplotlib
 
@@ -72,7 +74,6 @@ ts = load.timescale()
 planets = load('de421.bsp')
 earth,moon,sun = planets['earth'],planets['moon'],planets['sun']
 eph = load('de421.bsp')
-milkyway = Star(ra_hours=(17, 45, 40.04), dec_degrees=(-29, 0, 28.1))
 
 ## Define variables for locations
 izana_loc = earth + Topos('28.300398N', '16.512252W')
@@ -80,21 +81,18 @@ santa_loc = earth + Topos('28.472412500N', '16.247361500W')
 
 ## !! Time objects from dt need a timezone (aware dt object) to work with skyfield lib
 ## ex.: time = dt.now(timezone.utc), with an import of datetime.timezone
-def MoonAngle(dt_array, location):
+def RaDecGal(dt_array, location):
     t = ts.utc(dt_array)
-    astrometric = location.at(t).observe(moon)
-    alt, _, _ = astrometric.apparent().altaz()
-    return alt.degrees
+    ra, dec, _ = location.at(t).from_altaz(alt_degrees=90, az_degrees=0).radec()
+    radec = np.around(np.array((ra._degrees, dec._degrees)), decimals=5)
+    ra, dec = radec
+    icrs = SkyCoord(ra=ra*u.degree, dec=dec*u.degree, frame='icrs').galactic
+    radec_gal = np.array((icrs.l.deg, icrs.b.deg)).T
+    return radec_gal
 
-def SunAngle(dt_array, location):
+def ObjectAngle(dt_array, object, location):
     t = ts.utc(dt_array)
-    astrometric = location.at(t).observe(sun)
-    alt, _, _ = astrometric.apparent().altaz()
-    return alt.degrees
-
-def MilkywayAngle(dt_array, location):
-    t = ts.utc(dt_array)
-    astrometric = location.at(t).observe(milkyway)
+    astrometric = location.at(t).observe(object)
     alt, _, _ = astrometric.apparent().altaz()
     return alt.degrees
 
@@ -110,15 +108,29 @@ def MilkywayAngle(dt_array, location):
 #############################
 
 ## COSQM SANTA CRUZ
-path_santa='cosqm_santa/data/'
+path_cosqm='cosqm_santa/data/'
 loc = santa_loc
 loc_str = 'santa'
+slide_threshold = 0.1
+slide_window_size = 5
+mw_min_angle = 40
+moon_min_angle = -2
+sun_min_angle = -15
+
+path_aod = 'cosqm_santa/20190601_20210131_Santa_Cruz_Tenerife.lev10'
+
+
+
 
 ## find all paths of files in root directory
-paths_santa = sorted(glob(path_santa+"*/*/*.txt"))
-files = pd.concat([LoadData(path) for path in paths_santa], ignore_index=True)
+paths_cosqm = sorted(glob(path_cosqm+"*/*/*.txt"))
+files = pd.concat([LoadData(path) for path in paths_cosqm], ignore_index=True)
 cosqm_santa = files[['Sqm0', 'Sqm1', 'Sqm2', 'Sqm3', 'Sqm4']].values
 dt_santa = files['Datetime']
+
+#remove non datetime errors in cosqm files (NaT)
+cosqm_santa = cosqm_santa[~pd.isnull(dt_santa)]
+dt_santa = dt_santa[~pd.isnull(dt_santa)]
 
 ### if day is wanted: dt_santa_day = dt_santa.dt.day
 ### if interval wanted: inds = (dt_santa.dt.date == np.array('2020-01-21',dtype='datetime64[D]')) | (dt_santa.dt.date == np.array('2020-01-22',dtype='datetime64[D]'))
@@ -131,35 +143,35 @@ cosqm_santa = cosqm_santa[zeros_mask]
 dt_santa = dt_santa[zeros_mask]
 
 ## Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
-slide_threshold = 0.1
-slide_window_size = 5
+
 cosqm_santa_diff = Cloudslidingwindow(cosqm_santa, slide_window_size, slide_threshold)
 # plt.scatter(dt_santa, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
 
-## threshold from visual analysis (14mag seems reasonable)
-#cosqm_santa_diff[cosqm_santa_diff<16.5] = np.nan
+#milky way filter
+print('milky way angles calculation')
+mw_angles = RaDecGal(dt_santa, loc)
+mw_mask = mw_angles[:,1]<mw_min_angle
+cosqm_santa_mw = cosqm_santa_diff[mw_mask]
+dt_santa_mw = dt_santa[mw_mask].reset_index(drop=True)
 
 ## Compute moon angles for each timestamp in COSQM data
-print('moon_angles calculation')
-moon_angles = MoonAngle(dt_santa, loc)
-np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce ulterior computing time
+print('moon angles calculation')
+moon_angles = ObjectAngle(dt_santa_mw, moon, loc)
+#np.savetxt('cosqm_santa_moon_angles.txt', moon_angles)				#Save angles to reduce ulterior computing time
 #moon_angles = np.loadtxt('cosqm_'+loc_str+'_moon_angles.txt')					#Load already computed angles
 
 ## Mask values for higher angle than -18deg (astro twilight)
-moon_min_angle = -2
-moon_mask = moon_angles<moon_min_angle
 
-cosqm_santa_moon = cosqm_santa_diff[moon_mask]
-dt_santa_moon = dt_santa[moon_mask].reset_index(drop=True)
+moon_mask = moon_angles<moon_min_angle
+cosqm_santa_moon = cosqm_santa_mw[moon_mask]
+dt_santa_moon = dt_santa_mw[moon_mask].reset_index(drop=True)
 #dates_days_since_start = np.array([(dt.fromtimestamp(date)-dt.fromtimestamp(dates[0])).days+1 for date in dates])
 
 ## Compute sun angles for each timestamp in COSQM data
 print('sun_angles calculation')
-sun_angles = SunAngle(dt_santa_moon, santa_loc)
-np.savetxt('cosqm_'+loc_str+'_sun_angles.txt', sun_angles)
+sun_angles = ObjectAngle(dt_santa_moon, sun, santa_loc)
+#np.savetxt('cosqm_'+loc_str+'_sun_angles.txt', sun_angles)
 #sun_angles = np.loadtxt('cosqm_'+loc_str+'_sun_angles.txt')					#Load already computed angles
-
-sun_min_angle = -18
 sun_mask = sun_angles<sun_min_angle
 
 cosqm_santa_sun = cosqm_santa_moon[sun_mask]
@@ -171,6 +183,7 @@ dt_santa_sun = dt_santa_moon[sun_mask].reset_index(drop=True)
 # plot filtering
 plt.figure(figsize=[16,9])
 plt.scatter(dt_santa, cosqm_santa[:,0], s=30, label='cosqm_santa')
+plt.scatter(dt_santa_mw, cosqm_santa_mw[:,0], s=30, alpha=0.5, label='milky way below '+str(mw_min_angle))
 plt.scatter(dt_santa_moon, cosqm_santa_moon[:,0], s=30, alpha=0.5, label='moon below '+str(moon_min_angle))
 plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0], s=15, label='sun below '+str(sun_min_angle), c='k')
 #plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+23, s=10, label='moon angle')
@@ -283,13 +296,13 @@ plt.ylabel('CoSQM magnitude')
 
 ## set to nan values that are color higher than clear by visual analysis, followed by clouded nights by visual analysis
 dates_color_str = np.array(['2019-07-01', '2019-07-02', '2019-07-21', '2019-07-23', '2019-07-24', '2019-07-25', '2019-07-26', '2019-07-27', '2019-07-29',
-                    '2019-08-03', '2019-08-04', '2019-08-07', '2019-08-08', '2019-08-09', '2019-08-10', '2019-08-12', '2019-08-13', '2019-08-18', '2019-08-19', '2019-08-25','2019-08-26', '2019-08-31', 
+                    '2019-08-03', '2019-08-04', '2019-08-07', '2019-08-08', '2019-08-09', '2019-08-10', '2019-08-12', '2019-08-13', '2019-08-18', '2019-08-19', '2019-08-25','2019-08-26', '2019-08-30', '2019-08-31', 
                     '2019-09-06', '2019-09-23', '2019-09-24', '2019-09-25', '2019-09-26', '2019-09-27', '2019-09-28', '2019-09-29', '2019-09-30', 
                     '2019-10-01', '2019-10-02', '2019-10-03', '2019-10-04', '2019-10-05', '2019-10-07', '2019-10-30', '2019-10-31',  
                     '2019-11-01', '2019-11-22', '2019-11-23', '2019-11-26', '2019-11-27', '2019-11-28', '2019-11-29', '2019-11-30', 
                     '2019-12-01', '2019-12-02', '2019-12-04', '2019-12-17', '2019-12-19', '2019-12-20', '2019-12-21', '2019-12-23', '2019-12-24', '2019-12-25', '2019-12-28', '2019-12-29', '2019-12-30',
                     '2020-01-02', '2020-01-03', '2020-01-17', '2020-01-18', '2020-01-23', '2020-01-28', 
-					'2020-02-12', '2020-02-13', '2020-02-14', '2020-02-17', '2020-02-18', '2020-02-19', '2020-02-20', '2020-02-22', '2020-02-23', '2020-02-24', '2020-02-25', 
+					'2020-02-12', '2020-02-13', '2020-02-14', '2020-02-17', '2020-02-18', '2020-02-19', '2020-02-20', 
                     '2020-03-13', '2020-03-18', '2020-03-20', '2020-03-21', '2020-03-22',
                     '2020-05-20', '2020-05-29', '2020-05-30', 
                     '2020-06-02', '2020-06-11', '2020-06-12', '2020-06-13', '2020-06-14', '2020-06-15', '2020-06-16', '2020-06-17', '2020-06-18', '2020-06-19', '2020-06-20',  '2020-06-26',
@@ -455,8 +468,7 @@ dt_santa_date = dt_santa_final.dt.date
 #######
 # read from columns 4 to 25 (aod 1640 to 340nm)
 
-path = 'cosqm_santa/20190601_20210131_Santa_Cruz_Tenerife.lev10'
-data_aod_raw = pd.read_csv(path, delimiter=',', header=6)
+data_aod_raw = pd.read_csv(path_aod, delimiter=',', header=6)
 data_aod_raw['Datetime'] = pd.to_datetime(data_aod_raw['Date(dd:mm:yyyy)']+'T'+data_aod_raw['Time(hh:mm:ss)'], utc=True, format='%d:%m:%YT%H:%M:%S') 
 dt_aod = data_aod_raw['Datetime']
 dt_aod_date = data_aod_raw['Datetime'].dt.date
@@ -492,6 +504,7 @@ cosqm_santa_final = cosqm_santa_final[mask_santa]
 dt_santa_date = dt_santa_date[mask_santa]
 
 
+
 #############
 # CORRELATION
 #############
@@ -500,57 +513,32 @@ dt_santa_date = dt_santa_date[mask_santa]
 cosqm_am = np.zeros((np.unique(dt_santa_date).shape[0], 5))
 cosqm_pm = np.zeros((np.unique(dt_santa_date).shape[0], 5))
 hours_cosqm = dt_santa_final.dt.hour
-inds_a = np.zeros(dt_santa_date.shape[0], dtype=bool)
-inds_p = np.zeros(dt_santa_date.shape[0], dtype=bool)
+
+cosqm_mean_count = 10
+cosqm_min_am_hour = 4
+cosqm_max_pm_hour = 22
 
 for i,day in enumerate(np.unique(dt_santa_date)):
 #    d_mask_am = np.zeros(ddays_cosqm.shape[0], dtype=bool)
 #    d_mask_pm = np.zeros(ddays_cosqm.shape[0], dtype=bool)
-    d_mask_am = (dt_santa_date == day) & (hours_cosqm >= 3) & (hours_cosqm < 12)
-    d_mask_pm = (dt_santa_date == day) & (hours_cosqm >= 12) & (hours_cosqm < 22)
+    d_mask_am = (dt_santa_date == day) & (hours_cosqm >= cosqm_min_am_hour) & (hours_cosqm < 12)
+    d_mask_pm = (dt_santa_date == day) & (hours_cosqm >= 12) & (hours_cosqm < cosqm_max_pm_hour)
     inds_am = np.where(d_mask_am == True)[0]
-    if inds_am.shape[0]>5:
-        inds_am = inds_am[-5:]
+    if inds_am.shape[0]>cosqm_mean_count:
+        inds_am = inds_am[-cosqm_mean_count:]
+        cosqm_am[i] = np.nanmean(cosqm_santa_final[inds_am],axis=0)
+    else:
+        inds_am[inds_am == True] = False
+        cosqm_am[i] = np.nan
     inds_pm = np.where(d_mask_pm == True)[0]
-    if inds_pm.shape[0]>5:
-        inds_pm = inds_pm[:5]
-    print('day: ', day, 'am: ', inds_am.shape, 'pm: ', inds_pm.shape)
-    cosqm_am[i] = np.nanmean(cosqm_santa_final[inds_am],axis=0)
-    cosqm_pm[i] = np.nanmean(cosqm_santa_final[inds_pm],axis=0)
-#    dt_cosqm_am = dt_santa_final[inds_am]
-#    dt_cosqm_pm = dt_santa_final[inds_pm]
-    cosqm_am[cosqm_am == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
-    cosqm_pm[cosqm_pm == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
-    inds_a[inds_am] = True
-    inds_p[inds_pm] = True
-
-
-
-# Selection of AOD values: all data from 3pm to midnight for aod_pm, all data from midnight till 10am   
-aod_am = np.zeros((np.unique(dt_aod_date).shape[0], aod_bands.shape[0]))
-aod_pm = np.zeros((np.unique(dt_aod_date).shape[0], aod_bands.shape[0]))
-hours_aod = dt_aod.dt.hour
-
-
-for i,day in enumerate(np.unique(dt_aod_date)):
-    d_mask_am = np.zeros(dt_aod_date.shape[0], dtype=bool)
-    d_mask_pm = np.zeros(dt_aod_date.shape[0], dtype=bool)
-    d_mask_am[(dt_aod_date == day) & (hours_aod < 12)] = True
-    d_mask_pm[(dt_aod_date == day) & (hours_aod >= 12)] = True
-    inds_am = np.where(d_mask_am == True)[0]
-    if inds_am.shape[0]>5:
-        inds_am = inds_am[:10]
-    inds_pm = np.where(d_mask_pm == True)[0]
-    if inds_pm.shape[0]>5:
-        inds_pm = inds_pm[-10:]
-    print('day: ', day, 'am: ', inds_am.shape, 'pm: ', inds_pm.shape)
-    aod_am[i] =  np.nanmean(data_aod[inds_am],axis=0)
-    aod_pm[i] =  np.nanmean(data_aod[inds_pm],axis=0)
-#    dt_aod_am = dt_aod[inds_am]
-#    dt_aod_pm = dt_aod[inds_pm]
-    aod_am[aod_am <= 0] = np.nan                    # remove zeros values from sensor problem (no data?)
-    aod_pm[aod_pm <= 0] = np.nan                    # remove zeros values from sensor problem (no data?)
-
+    if inds_pm.shape[0]>cosqm_mean_count:
+        inds_pm = inds_pm[:cosqm_mean_count]
+        cosqm_pm[i] = np.nanmean(cosqm_santa_final[inds_pm],axis=0)
+    else:
+        inds_pm[inds_pm == True] = False
+        cosqm_pm[i] = np.nan
+#    cosqm_am[cosqm_am == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
+#    cosqm_pm[cosqm_pm == 0] = np.nan                    # remove zeros values from sensor problem (no data?)
 
 plt.figure()
 plt.title('ZNSB dusk and dawn values - Blue')
@@ -559,6 +547,38 @@ plt.scatter(np.unique(dt_santa_date), cosqm_pm[:,3], label='cosqm_pm', s=15)
 plt.xlabel('days from july 2019')
 plt.ylabel('CoSQM Magnitudes (mag)')
 plt.legend()
+
+
+
+# Selection of AOD values: all data from 3pm to midnight for aod_pm, all data from midnight till 10am   
+aod_am = np.zeros((np.unique(dt_aod_date).shape[0], aod_bands.shape[0]))
+aod_pm = np.zeros((np.unique(dt_aod_date).shape[0], aod_bands.shape[0]))
+hours_aod = dt_aod.dt.hour
+
+aod_mean_count = 20
+aod_max_am_hour = 10
+aod_min_pm_hour = 16
+
+for i,day in enumerate(np.unique(dt_aod_date)):
+    d_mask_am = np.zeros(dt_aod_date.shape[0], dtype=bool)
+    d_mask_pm = np.zeros(dt_aod_date.shape[0], dtype=bool)
+    d_mask_am[(dt_aod_date == day) & (hours_aod < aod_max_am_hour)] = True
+    d_mask_pm[(dt_aod_date == day) & (hours_aod >= aod_min_pm_hour)] = True
+    inds_am = np.where(d_mask_am == True)[0]
+    if inds_am.shape[0]>aod_mean_count:
+        inds_am = inds_am[:aod_mean_count]
+        aod_am[i] =  np.nanmean(data_aod[inds_am],axis=0)
+    else:
+        inds_am[inds_am == True] = False
+        aod_am[i] =  np.nan
+
+    inds_pm = np.where(d_mask_pm == True)[0]
+    if inds_pm.shape[0]>aod_mean_count:
+        inds_pm = inds_pm[-aod_mean_count:]
+        aod_pm[i] =  np.nanmean(data_aod[inds_pm],axis=0)
+    else:
+        inds_pm[inds_pm == True] = False
+        aod_pm[i] =  np.nan
 
 plt.figure()
 plt.title('AOD dusk and dawn values')
@@ -580,21 +600,6 @@ for i in range(aod_bands.shape[0]):
     #ax.set_yscale('log')
     ax.set_title(f'{loc_str}, AOD {aod_bands[i][4:]}, CoSQM {cosqm_bands[j]}nm')
     ax.legend()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
