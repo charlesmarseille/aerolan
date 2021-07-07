@@ -626,40 +626,49 @@ aod_pm_corr = aod_from_angstrom(aod_pm, wls1, wls2, angstrom_pm)
 def aod_from_angstrom(aod2, wls1, wls2, alpha):
     return aod2*(wls1/wls2)**-alpha
 
-def fit_func(x, a,b,c,d):
-    return a*x**3+b*x**2+c*x+d
+def fit_func(x, a,b,c,):
+    return a*x**2+b*x+c
 
 def third_order(x, params):
     return params[0]*x**3+params[1]*x**2+params[2]*x+params[3]
 
+def second_order1(x, params):
+    return params[0]*x**2+params[1]*x+params[2]
+
+def expo(x, a,b,c):
+    return a*np.e**-(b*x)+c
+
+def expo1(x, params):
+    return params[0]*np.e**-(params[1]*x)+params[2]
+
 
 #set limit to constant in second order equation to assure always positive values
-param_bounds=([-np.inf,-np.inf,-np.inf,0],[np.inf,np.inf,np.inf,np.inf])
+param_bounds=([-np.inf,-np.inf,0],[np.inf,np.inf,np.inf])
 
 #single fit functions for both dusk and dawn correlated points
 cosqm = np.vstack([cosqm_am, cosqm_pm])[:,1:]
 aod = np.vstack([aod_am, aod_pm])
 valid = ~(np.isnan(cosqm) | (np.isnan(aod)))
-corr_fitr, _ = curve_fit(fit_func, cosqm[:,0][valid[:,0]], aod[:,0][valid[:,0]], bounds=param_bounds)
-corr_fitg, _ = curve_fit(fit_func, cosqm[:,1][valid[:,1]], aod[:,1][valid[:,1]], bounds=param_bounds)
-corr_fitb, _ = curve_fit(fit_func, cosqm[:,2][valid[:,2]], aod[:,2][valid[:,2]], bounds=param_bounds)
-corr_fity, _ = curve_fit(fit_func, cosqm[:,3][valid[:,3]], aod[:,3][valid[:,3]], bounds=param_bounds)
+corr_fitr, _ = curve_fit(expo, cosqm[:,0][valid[:,0]], aod[:,0][valid[:,0]], bounds=param_bounds)
+corr_fitg, _ = curve_fit(expo, cosqm[:,1][valid[:,1]], aod[:,1][valid[:,1]], bounds=param_bounds)
+corr_fitb, _ = curve_fit(expo, cosqm[:,2][valid[:,2]], aod[:,2][valid[:,2]], bounds=param_bounds)
+corr_fity, _ = curve_fit(expo, cosqm[:,3][valid[:,3]], aod[:,3][valid[:,3]], bounds=param_bounds)
 
 
 #fit functions for dusk
 valid = ~(np.isnan(cosqm_am[:,1:]) | (np.isnan(aod_am)))
-corr_am_fitr, _ = curve_fit(fit_func, cosqm_am[:,1][valid[:,0]], aod_pm[:,0][valid[:,0]], bounds=param_bounds)
-corr_am_fitg, _ = curve_fit(fit_func, cosqm_am[:,2][valid[:,1]], aod_pm[:,1][valid[:,1]], bounds=param_bounds)
-corr_am_fitb, _ = curve_fit(fit_func, cosqm_am[:,3][valid[:,2]], aod_pm[:,2][valid[:,2]], bounds=param_bounds)
-corr_am_fity, _ = curve_fit(fit_func, cosqm_am[:,4][valid[:,3]], aod_pm[:,3][valid[:,3]], bounds=param_bounds)
+corr_am_fitr, _ = curve_fit(expo, cosqm_am[:,1][valid[:,0]], aod_am[:,0][valid[:,0]], bounds=param_bounds)
+corr_am_fitg, _ = curve_fit(expo, cosqm_am[:,2][valid[:,1]], aod_am[:,1][valid[:,1]], bounds=param_bounds)
+corr_am_fitb, _ = curve_fit(expo, cosqm_am[:,3][valid[:,2]], aod_am[:,2][valid[:,2]], bounds=param_bounds)
+corr_am_fity, _ = curve_fit(expo, cosqm_am[:,4][valid[:,3]], aod_am[:,3][valid[:,3]], bounds=param_bounds)
 
 
 #fit functions for dawn
 valid = ~(np.isnan(cosqm_pm[:,1:]) | (np.isnan(aod_pm)))
-corr_pm_fitr, _ = curve_fit(fit_func, cosqm_pm[:,1][valid[:,0]], aod_pm[:,0][valid[:,0]], bounds=param_bounds)
-corr_pm_fitg, _ = curve_fit(fit_func, cosqm_pm[:,2][valid[:,1]], aod_pm[:,1][valid[:,1]], bounds=param_bounds)
-corr_pm_fitb, _ = curve_fit(fit_func, cosqm_pm[:,3][valid[:,2]], aod_pm[:,2][valid[:,2]], bounds=param_bounds)
-corr_pm_fity, _ = curve_fit(fit_func, cosqm_pm[:,4][valid[:,3]], aod_pm[:,3][valid[:,3]], bounds=param_bounds)
+corr_pm_fitr, _ = curve_fit(expo, cosqm_pm[:,1][valid[:,0]], aod_pm[:,0][valid[:,0]], bounds=param_bounds)
+corr_pm_fitg, _ = curve_fit(expo, cosqm_pm[:,2][valid[:,1]], aod_pm[:,1][valid[:,1]], bounds=param_bounds)
+corr_pm_fitb, _ = curve_fit(expo, cosqm_pm[:,3][valid[:,2]], aod_pm[:,2][valid[:,2]], bounds=param_bounds)
+corr_pm_fity, _ = curve_fit(expo, cosqm_pm[:,4][valid[:,3]], aod_pm[:,3][valid[:,3]], bounds=param_bounds)
 
 #plt.figure()
 #plt.title('AOD dusk and dawn values')
@@ -682,16 +691,16 @@ c2='#ff7f0e'
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True)
 ax[0, 0].scatter(cosqm_am[:,1], aod_am[:,0], label='dusk')
 ax[0, 0].scatter(cosqm_pm[:,1], aod_pm[:,0], label='dawn')
-ax[0, 0].plot(xs, third_order(xs, corr_fitr))
+ax[0, 0].plot(xs, second_order1(xs, corr_fitr))
 ax[0, 1].scatter(cosqm_am[:,2], aod_am[:,1])
 ax[0, 1].scatter(cosqm_pm[:,2], aod_pm[:,1])
-ax[0, 1].plot(xs, third_order(xs, corr_fitg))
+ax[0, 1].plot(xs, second_order1(xs, corr_fitg))
 ax[1, 0].scatter(cosqm_am[:,3], aod_am[:,2])                                
 ax[1, 0].scatter(cosqm_pm[:,3], aod_pm[:,2])
-ax[1, 0].plot(xs, third_order(xs, corr_fitb))
+ax[1, 0].plot(xs, second_order1(xs, corr_fitb))
 ax[1, 1].scatter(cosqm_am[:,4], aod_am[:,3])
 ax[1, 1].scatter(cosqm_pm[:,4], aod_pm[:,3])
-ax[1, 1].plot(xs, third_order(xs, corr_fity))
+ax[1, 1].plot(xs, second_order1(xs, corr_fity))
 #ax[0, 0].set_yscale('log')
 fig.text(0.5, 0.04, 'CoSQM magnitude', ha='center')
 fig.text(0.04, 0.5, 'AOD', va='center', rotation='vertical')
@@ -707,20 +716,20 @@ fig.legend(loc='upper center', prop={'size': 8})
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True)
 ax[0, 0].scatter(cosqm_am[:,1], aod_am[:,0], label='dusk',c=c1)
 ax[0, 0].scatter(cosqm_pm[:,1], aod_pm[:,0], label='dawn',c=c2)
-ax[0, 0].plot(xs, third_order(xs, corr_am_fitr), c=c1)
-ax[0, 0].plot(xs, third_order(xs, corr_pm_fitr), c=c2)
+ax[0, 0].plot(xs, second_order1(xs, corr_am_fitr), c=c1)
+ax[0, 0].plot(xs, second_order1(xs, corr_pm_fitr), c=c2)
 ax[0, 1].scatter(cosqm_am[:,2], aod_am[:,1],c=c1)
 ax[0, 1].scatter(cosqm_pm[:,2], aod_pm[:,1],c=c2)
-ax[0, 1].plot(xs, third_order(xs, corr_am_fitg), c=c1)
-ax[0, 1].plot(xs, third_order(xs, corr_pm_fitg), c=c2)
+ax[0, 1].plot(xs, second_order1(xs, corr_am_fitg), c=c1)
+ax[0, 1].plot(xs, second_order1(xs, corr_pm_fitg), c=c2)
 ax[1, 0].scatter(cosqm_am[:,3], aod_am[:,2],c=c1)
 ax[1, 0].scatter(cosqm_pm[:,3], aod_pm[:,2],c=c2)
-ax[1, 0].plot(xs, third_order(xs, corr_am_fitb), c=c1)
-ax[1, 0].plot(xs, third_order(xs, corr_pm_fitb), c=c2)
+ax[1, 0].plot(xs, second_order1(xs, corr_am_fitb), c=c1)
+ax[1, 0].plot(xs, second_order1(xs, corr_pm_fitb), c=c2)
 ax[1, 1].scatter(cosqm_am[:,4], aod_am[:,3],c=c1)
 ax[1, 1].scatter(cosqm_pm[:,4], aod_pm[:,3],c=c2)
-ax[1, 1].plot(xs, third_order(xs, corr_am_fity), c=c1)
-ax[1, 1].plot(xs, third_order(xs, corr_pm_fity), c=c2)
+ax[1, 1].plot(xs, second_order1(xs, corr_am_fity), c=c1)
+ax[1, 1].plot(xs, second_order1(xs, corr_pm_fity), c=c2)
 #ax[0, 0].set_yscale('log')
 fig.text(0.5, 0.04, 'CoSQM magnitude', ha='center')
 fig.text(0.04, 0.5, 'AOD', va='center', rotation='vertical')
@@ -733,20 +742,25 @@ ax[0, 0].set_xlim(17.5,21)
 fig.legend(loc='upper center', prop={'size': 8})
 
 
+np.savetxt('cosqm_ce318t_546nm_am.csv', np.hstack((cosqm_am[:,1:], aod_am)))
+np.savetxt('cosqm_ce318t_546nm_pm.csv', np.hstack((cosqm_pm[:,1:], aod_pm)))
+
+
+
 
 ## Continuity
 
 #single fit function for all points
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True)
 ax[0,0].scatter(dt_aod, data_aod[:,0], s=10, label='CE318-T')
-ax[0,0].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,0], corr_fitr), s=10, label='CoSQM derived AOD')
+ax[0,0].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,0], corr_fitr), s=10, label='CoSQM derived AOD')
 ax[0,1].scatter(dt_aod, data_aod[:,1], s=10)
-ax[0,1].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,1], corr_fitg), s=10)
+ax[0,1].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,1], corr_fitg), s=10)
 ax[1,0].scatter(dt_aod, data_aod[:,2], s=10)
-ax[1,0].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,2], corr_fitb), s=10)
+ax[1,0].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,2], corr_fitb), s=10)
 ax[1,0].tick_params('x', labelrotation=45)
 ax[1,1].scatter(dt_aod, data_aod[:,3], s=10)
-ax[1,1].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,3], corr_fitc), s=10)
+ax[1,1].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,3], corr_fitc), s=10)
 ax[1,1].tick_params('x', labelrotation=45)
 ax[0, 0].set_yscale('log')
 fig.text(0.5, 0.04, 'Date', ha='center')
@@ -761,18 +775,18 @@ ax[1, 1].text(0.25,0.15, f'{cosqm_bands[4]} nm', horizontalalignment='center', v
 #seperate fit funcs for am and pm (different aerosol contents through night)
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True)
 ax[0,0].scatter(dt_aod, data_aod[:,0], s=10, label='CE318-T')
-ax[0,0].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,0], corr_am_fitr), s=10, label='CoSQM dusk')
-ax[0,0].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,0], corr_pm_fitr), s=10, label='CoSQM dawn')
+ax[0,0].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,0], corr_am_fitr), s=10, label='CoSQM dusk')
+ax[0,0].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,0], corr_pm_fitr), s=10, label='CoSQM dawn')
 ax[0,1].scatter(dt_aod, data_aod[:,1], s=10)
-ax[0,1].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,1], corr_am_fitg), s=10)
-ax[0,1].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,1], corr_pm_fitg), s=10)
+ax[0,1].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,1], corr_am_fitg), s=10)
+ax[0,1].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,1], corr_pm_fitg), s=10)
 ax[1,0].scatter(dt_aod, data_aod[:,2], s=10)
-ax[1,0].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,2], corr_am_fitb), s=10)
-ax[1,0].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,2], corr_pm_fitb), s=10)
+ax[1,0].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,2], corr_am_fitb), s=10)
+ax[1,0].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,2], corr_pm_fitb), s=10)
 ax[1,0].tick_params('x', labelrotation=45)
 ax[1,1].scatter(dt_aod, data_aod[:,3], s=10)
-ax[1,1].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,3], corr_am_fity), s=10)
-ax[1,1].scatter(dt_santa_corr, third_order(cosqm_santa_corr[:,3], corr_pm_fity), s=10)
+ax[1,1].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,3], corr_am_fity), s=10)
+ax[1,1].scatter(dt_santa_corr, second_order1(cosqm_santa_corr[:,3], corr_pm_fity), s=10)
 ax[1,1].tick_params('x', labelrotation=45)
 ax[0, 0].set_yscale('log')
 fig.text(0.5, 0.04, 'Date', ha='center')
