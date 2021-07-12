@@ -651,10 +651,15 @@ cosqm = np.array(cosqm, dtype=np.longdouble)
 aod = np.vstack([aod_am, aod_pm])
 valid = ~(np.isnan(cosqm) | (np.isnan(aod)))
 
-'629', '546', '514', '562'
 #save data for martin
-header_str = ['CoSQM_R', 'CoSQM_G', 'CoSQM_B', 'CoSQM_Y', 'CE318T_629', 'CE318T_546', 'CE318T_514', 'CE318T_562']
-corr_data = np.hstack(cosqm[:,0][valid[:,0]], aod[:,0][valid[:,0]]
+corr_data_r = np.vstack((cosqm[:,0][valid[:,0]], aod[:,0][valid[:,0]])).T
+corr_data_g = np.vstack((cosqm[:,1][valid[:,1]], aod[:,1][valid[:,1]])).T
+corr_data_b = np.vstack((cosqm[:,2][valid[:,2]], aod[:,2][valid[:,2]])).T
+corr_data_y = np.vstack((cosqm[:,3][valid[:,3]], aod[:,3][valid[:,3]])).T
+np.savetxt('correlation_data/correlation_data_santa_R.csv', corr_data_r, delimiter=',', header='CoSQM_R, CE318T_629nm')
+np.savetxt('correlation_data/correlation_data_santa_G.csv', corr_data_g, delimiter=',', header='CoSQM_G, CE318T_546nm')
+np.savetxt('correlation_data/correlation_data_santa_B.csv', corr_data_b, delimiter=',', header='CoSQM_B, CE318T_514nm')
+np.savetxt('correlation_data/correlation_data_santa_Y.csv', corr_data_y, delimiter=',', header='CoSQM_Y, CE318T_562nm')
 
 
 corr_fitr, _ = curve_fit(fit_func, cosqm[:,0][valid[:,0]], aod[:,0][valid[:,0]], p0=p0, bounds=param_bounds)
