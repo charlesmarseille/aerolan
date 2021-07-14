@@ -634,16 +634,16 @@ plt.xlabel('days from july 2019')
 plt.ylabel('CoSQM Magnitudes (mag)')
 plt.legend()
 
-def fit_func(x, a,b,c):
-    return (1/a)**(b*(x+c))
+def fit_func(x, a,b):
+    return -a*np.log(x/b)
 
 def fit_func1(x, params):
-    return fit_func(x, params[0], params[1], params[2])
+    return fit_func(x, params[0], params[1])
 
 
 #set limit to constant in second order equation to assure always positive values
-param_bounds=([1,1e-3,-100],[10,50,0])
-p0 = [1, 4, 10]
+param_bounds=([1,1],[30,50])
+p0 = [7, 20]
 
 #single fit functions for both dusk and dawn correlated points
 cosqm = np.vstack([cosqm_am, cosqm_pm])[:,1:]
@@ -701,7 +701,7 @@ corr_round = [np.around(corr, decimals=2) for corr in corr_list]
 #Correlation plots for the 4 color bands (R-629nm, G-546nm, B-514nm, Y-562nm)
 cosqm_bands = ['0', '629', '546', '514', '562']
 #xs = np.arange(np.nanmin(cosqm_am),np.nanmax(cosqm_pm),0.001)
-xs = np.arange(17,24,0.0001)
+xs = np.arange(15,24,0.0001)
 x = np.arange(11,24,0.0001)
 
 c1='#1f77b4'
@@ -736,7 +736,7 @@ ax[1, 1].text(0.75,0.75, f'{cosqm_bands[4]} nm,\n dusk: {str(corr_round[6])[1:-1
 ax[0, 0].set_xlim(17.5,21)
 ax[0, 0].set_ylim(1e-2,20)
 ax[0, 0].set_yscale('log')
-fig.text(0.5, 0.9, 'Fit function: $a^{b(x+c)}$', ha='center')
+fig.text(0.5, 0.9, 'Fit function: $-a*log^{x/b}$', ha='center')
 fig.legend(loc='upper center', prop={'size': 8})
 
 
@@ -776,24 +776,29 @@ fig, ax = plt.subplots(2,2, sharex=True, sharey=True)
 ax[0, 0].scatter(cosqm_am[:,1], aod_am[:,0], label='dusk')
 ax[0, 0].scatter(cosqm_pm[:,1], aod_pm[:,0], label='dawn')
 ax[0, 0].plot(xs, fit_func1(xs, corr_fitr))
+ax[0, 0].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
 ax[0, 1].scatter(cosqm_am[:,2], aod_am[:,1])
 ax[0, 1].scatter(cosqm_pm[:,2], aod_pm[:,1])
 ax[0, 1].plot(xs, fit_func1(xs, corr_fitg))
+ax[0, 1].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
 ax[1, 0].scatter(cosqm_am[:,3], aod_am[:,2])                                
 ax[1, 0].scatter(cosqm_pm[:,3], aod_pm[:,2])
 ax[1, 0].plot(xs, fit_func1(xs, corr_fitb))
+ax[1, 0].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
 ax[1, 1].scatter(cosqm_am[:,4], aod_am[:,3])
 ax[1, 1].scatter(cosqm_pm[:,4], aod_pm[:,3])
 ax[1, 1].plot(xs, fit_func1(xs, corr_fity))
+ax[1, 1].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
 #ax[0, 0].set_yscale('log')
 fig.text(0.5, 0.04, 'CoSQM magnitude', ha='center')
 fig.text(0.04, 0.5, 'AOD', va='center', rotation='vertical')
 fig.canvas.set_window_title(f'Santa Cruz de Tenerife')
-ax[0, 0].text(0.75,0.75, f'{cosqm_bands[1]} nm,\n dusk: {str(corr_round[0])[1:-1]}\n dawn: {str(corr_round[1])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[0,0].transAxes)
-ax[0, 1].text(0.75,0.75, f'{cosqm_bands[2]} nm,\n dusk: {str(corr_round[2])[1:-1]}\n dawn: {str(corr_round[3])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[0,1].transAxes)
-ax[1, 0].text(0.75,0.75, f'{cosqm_bands[3]} nm,\n dusk: {str(corr_round[4])[1:-1]}\n dawn: {str(corr_round[5])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[1,0].transAxes)
-ax[1, 1].text(0.75,0.75, f'{cosqm_bands[4]} nm,\n dusk: {str(corr_round[6])[1:-1]}\n dawn: {str(corr_round[7])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[1,1].transAxes)
+ax[0, 0].text(0.75,0.75, f'{cosqm_bands[1]} nm,\n params:{str(corr_single_round[0])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[0,0].transAxes)
+ax[0, 1].text(0.75,0.75, f'{cosqm_bands[2]} nm,\n params:{str(corr_single_round[1])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[0,1].transAxes)
+ax[1, 0].text(0.75,0.75, f'{cosqm_bands[3]} nm,\n params:{str(corr_single_round[2])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[1,0].transAxes)
+ax[1, 1].text(0.75,0.75, f'{cosqm_bands[4]} nm,\n params:{str(corr_single_round[3])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[1,1].transAxes)
 ax[0, 0].set_xlim(17.5,21)
+ax[0, 0].set_ylim(-0.05)
 fig.legend(loc='upper center', prop={'size': 8})
 
 
@@ -807,7 +812,7 @@ ax[1,0].scatter(dt_aod, data_aod[:,2], s=10)
 ax[1,0].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,2], corr_fitb), s=10)
 ax[1,0].tick_params('x', labelrotation=45)
 ax[1,1].scatter(dt_aod, data_aod[:,3], s=10)
-ax[1,1].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,3], corr_fitc), s=10)
+ax[1,1].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,3], corr_fity), s=10)
 ax[1,1].tick_params('x', labelrotation=45)
 ax[0, 0].set_yscale('log')
 fig.text(0.5, 0.04, 'Date', ha='center')
