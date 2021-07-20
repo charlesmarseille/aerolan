@@ -105,7 +105,8 @@ def ObjectAngle(dt_array, object, location):
 #             C(watt),R(watt),G(watt),B(watt),Y(watt)  
 #############################
 
-## COSQM izana
+#######
+## Variables
 path_cosqm='cosqm_santa/data/'
 loc = santa_loc
 loc_lat = 28.472412500
@@ -117,6 +118,9 @@ slide_window_size = 5
 mw_min_angle = 40
 moon_min_angle = -2
 sun_min_angle = -18
+cosqm_bands = np.array([667, 571, 503, 555])
+#######
+
 
 path_aod = 'cosqm_santa/20190601_20210131_Santa_Cruz_Tenerife.lev10'
 
@@ -375,18 +379,6 @@ hours_float[hours_float>12]-=24
 
 bands = ['clear', 'red', 'green', 'yellow', 'blue']
 
-
-## Normalized ZNSB for all filtered data
-# for b,band in enumerate(bands):
-#     fig, ax = plt.subplots()
-#     ax.scatter(hours_float,c_norm[:,b], s=10, label=band)
-#     ax.legend()
-#     plt.xlabel('hour from midnight (h)', fontsize=10)
-#     plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
-#     fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
-#     plt.savefig(f'images/santa/trends/normalized_{band}.png')
-
-
 #2d hist
 plt.figure(figsize=[12,8])
 plt.hist2d(hours_float[np.isfinite(c_norm)[:,0]], c_norm[:,0][np.isfinite(c_norm)[:,0]], 200, cmap='inferno')
@@ -454,25 +446,20 @@ plt.ylim(19, 20.2)
 plt.legend()
 plt.yscale('log')
 
+#Plot corrected trend to show red goes darker throughout the night compared to other colors
+plt.figure()
+plt.scatter(hours_float, cosqm_santa_sun[:,1], c='r', label=cosqm_bands[0])
+plt.scatter(hours_float, cosqm_santa_sun[:,2], c='g', label=cosqm_bands[1])
+plt.legend()
+plt.yscale('log')
 
 
-# for b,band in enumerate(bands):
-#     fig, ax = plt.subplots()
-#     ax.scatter(hours_float, cosqm_santa_final[:,b], s=15, label='normalized ZNSB')
-#     ax.legend()
-#     plt.xlabel('hour from midnight (h)', fontsize=10)
-#     plt.ylabel('CoSQM Magnitude (mag)', fontsize=10)
-#     fig.suptitle(f'Normalized ZNSB Santa-Cruz - {band}', fontsize=15)
-#     plt.savefig(f'images/santa/trends/final_znsb_data_{band}.png')
-
-#hist 2d
+# #hist 2d
 # plt.figure(figsize=[12,8])
-# plt.hist2d(hours_float[np.isfinite(cosqm_santa_final)[:,2]], cosqm_santa_final[:,2][np.isfinite(cosqm_santa_final)[:,2]], 200, cmap='inferno')
-# plt.hist2d(hours_float[np.isfinite(cosqm_santa_final)[:,2]], cosqm_santa_final[:,2][np.isfinite(cosqm_santa_final)[:,2]], 200, cmap='inferno', norm=LogNorm())
-# #plt.ylim(-1,0.75)
-# plt.title('ZNSB - Normalized final - clear')
+# plt.hist2d(hours_float[np.isfinite(cosqm_santa_corr)[:,0]], cosqm_santa_corr[:,0][np.isfinite(cosqm_santa_corr)[:,0]], 80, cmap='inferno')
+# #plt.hist2d(hours_float[np.isfinite(cosqm_santa_corr)[:,0]], cosqm_santa_corr[:,0][np.isfinite(cosqm_santa_corr)[:,0]], 80, cmap='inferno', norm=LogNorm())
 # plt.xlabel('hour')
-# plt.ylabel('CoSQM normalized magnitude')
+# plt.ylabel('CoSQM magnitude')
 
 
 ##########################
@@ -530,9 +517,12 @@ data_angstrom = data_angstrom[mask_aod]
 
 mask_santa = np.isin(dt_santa_date.values, np.unique(dt_aod.dt.date))
 dt_santa_final = dt_santa_final[mask_santa]
-cosqm_santa_final = cosqm_santa_final[mask_santa]
 dt_santa_date = dt_santa_date[mask_santa]
+cosqm_santa_final = cosqm_santa_final[mask_santa]
+hours_float = hours_float[mask_santa]
 
+dt_santa_corr = dt_santa_final
+cosqm_santa_corr = cosqm_santa_final[:,1:]
 
 
 #############
@@ -588,9 +578,9 @@ angstrom_pm = np.zeros((np.unique(dt_aod_date).shape[0], 4))
 
 hours_aod = dt_aod.dt.hour
 
-aod_mean_count = 1
-aod_max_am_hour = 12
-aod_min_pm_hour = 12
+aod_mean_count = 5
+aod_max_am_hour = 10
+aod_min_pm_hour = 14
 
 for i,day in enumerate(np.unique(dt_aod_date)):
     d_mask_am = np.zeros(dt_aod_date.shape[0], dtype=bool)
@@ -617,7 +607,8 @@ for i,day in enumerate(np.unique(dt_aod_date)):
         aod_pm[i] =  np.nan
         angstrom_pm[i] = np.nan
 
-wls1 = np.ones((aod_am.shape[0], 4))*np.array([629, 546, 514, 562])      # CoSQM center wavelenghts per filter
+
+wls1 = np.ones((aod_am.shape[0], 4))*cosqm_bands      # CoSQM center wavelenghts per filter
 wls2 = np.ones((aod_am.shape[0], 4))*np.array([675, 500, 500, 500])     # CE318-T sunphoto center wavelenghts per filter
 
 def aod_from_angstrom(aod2, wls1, wls2, alpha):
@@ -625,6 +616,8 @@ def aod_from_angstrom(aod2, wls1, wls2, alpha):
 
 aod_am_corr = aod_from_angstrom(aod_am, wls1, wls2, angstrom_am)
 aod_pm_corr = aod_from_angstrom(aod_pm, wls1, wls2, angstrom_pm)
+
+
 
 plt.figure()
 plt.title('ZNSB dusk and dawn values - Blue')
@@ -650,17 +643,6 @@ cosqm = np.vstack([cosqm_am, cosqm_pm])[:,1:]
 cosqm = np.array(cosqm, dtype=np.longdouble)
 aod = np.vstack([aod_am, aod_pm])
 valid = ~(np.isnan(cosqm) | (np.isnan(aod)))
-
-#save data for martin
-corr_data_r = np.vstack((cosqm[:,0][valid[:,0]], aod[:,0][valid[:,0]])).T
-corr_data_g = np.vstack((cosqm[:,1][valid[:,1]], aod[:,1][valid[:,1]])).T
-corr_data_b = np.vstack((cosqm[:,2][valid[:,2]], aod[:,2][valid[:,2]])).T
-corr_data_y = np.vstack((cosqm[:,3][valid[:,3]], aod[:,3][valid[:,3]])).T
-np.savetxt('correlation_data/correlation_data_santa_R.csv', corr_data_r, delimiter=',', header='CoSQM_R, CE318T_629nm')
-np.savetxt('correlation_data/correlation_data_santa_G.csv', corr_data_g, delimiter=',', header='CoSQM_G, CE318T_546nm')
-np.savetxt('correlation_data/correlation_data_santa_B.csv', corr_data_b, delimiter=',', header='CoSQM_B, CE318T_514nm')
-np.savetxt('correlation_data/correlation_data_santa_Y.csv', corr_data_y, delimiter=',', header='CoSQM_Y, CE318T_562nm')
-
 
 corr_fitr, _ = curve_fit(fit_func, cosqm[:,0][valid[:,0]], aod[:,0][valid[:,0]], p0=p0, bounds=param_bounds)
 corr_fitg, _ = curve_fit(fit_func, cosqm[:,1][valid[:,1]], aod[:,1][valid[:,1]], p0=p0, bounds=param_bounds)
@@ -689,6 +671,13 @@ corr_pm_fity, _ = curve_fit(fit_func, cosqm_pm[:,4][valid[:,3]], aod_pm[:,3][val
 corr_list = [corr_am_fitr,corr_pm_fitr,corr_am_fitg,corr_pm_fitg,corr_am_fitb,corr_pm_fitb,corr_am_fity,corr_pm_fity]
 corr_round = [np.around(corr, decimals=2) for corr in corr_list]
 
+cosqm_aod_r = fit_func1(cosqm_santa_corr[:,0], corr_fitr)
+cosqm_aod_g = fit_func1(cosqm_santa_corr[:,1], corr_fitg)
+cosqm_aod_b = fit_func1(cosqm_santa_corr[:,2], corr_fitb)
+cosqm_aod_y = fit_func1(cosqm_santa_corr[:,3], corr_fity)
+
+cosqm_aod_all = np.array((cosqm_aod_r, cosqm_aod_g, cosqm_aod_b, cosqm_aod_y)).T
+
 #plt.figure()
 #plt.title('AOD dusk and dawn values')
 #plt.scatter(np.unique(dt_aod_date), aod_am[:,3], label='aeronet_am', s=15)
@@ -698,11 +687,10 @@ corr_round = [np.around(corr, decimals=2) for corr in corr_list]
 #plt.legend()
 
 
-#Correlation plots for the 4 color bands (R-629nm, G-546nm, B-514nm, Y-562nm)
-cosqm_bands = ['0', '629', '546', '514', '562']
+#Correlation plots for the 4 color bands
+
 #xs = np.arange(np.nanmin(cosqm_am),np.nanmax(cosqm_pm),0.001)
 xs = np.arange(15,24,0.0001)
-x = np.arange(11,24,0.0001)
 
 c1='#1f77b4'
 c2='#ff7f0e'
@@ -728,51 +716,49 @@ ax[1, 1].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
 ax[0, 0].set_yscale('log')
 fig.text(0.5, 0.04, 'CoSQM magnitude', ha='center')
 fig.text(0.04, 0.5, 'AOD', va='center', rotation='vertical')
-fig.text(0.5, 0.9, r'$AOD = -a*log\left(\frac{x}{b}\right)$', ha='center')
-ax[0, 0].text(0.6,0.9, f'{cosqm_bands[1]} nm,\na,b = {str(corr_single_round[0])[1:-1]}', horizontalalignment='left', verticalalignment='center', transform=ax[0,0].transAxes)
-ax[0, 1].text(0.6,0.9, f'{cosqm_bands[2]} nm,\na,b = {str(corr_single_round[1])[1:-1]}', horizontalalignment='left', verticalalignment='center', transform=ax[0,1].transAxes)
-ax[1, 0].text(0.6,0.9, f'{cosqm_bands[3]} nm,\na,b = {str(corr_single_round[2])[1:-1]}', horizontalalignment='left', verticalalignment='center', transform=ax[1,0].transAxes)
-ax[1, 1].text(0.6,0.9, f'{cosqm_bands[4]} nm,\na,b = {str(corr_single_round[3])[1:-1]}', horizontalalignment='left', verticalalignment='center', transform=ax[1,1].transAxes)
+#fig.text(0.5, 0.9, r'$AOD = -a*log\left(\frac{x}{b}\right)$', ha='center')
+ax[0, 0].text(0.6,0.9, f'{cosqm_bands[0]} nm,\na,b = {str(corr_single_round[0])[1:-1]}', horizontalalignment='left', verticalalignment='center', transform=ax[0,0].transAxes)
+ax[0, 1].text(0.6,0.9, f'{cosqm_bands[1]} nm,\na,b = {str(corr_single_round[1])[1:-1]}', horizontalalignment='left', verticalalignment='center', transform=ax[0,1].transAxes)
+ax[1, 0].text(0.6,0.9, f'{cosqm_bands[2]} nm,\na,b = {str(corr_single_round[2])[1:-1]}', horizontalalignment='left', verticalalignment='center', transform=ax[1,0].transAxes)
+ax[1, 1].text(0.6,0.9, f'{cosqm_bands[3]} nm,\na,b = {str(corr_single_round[3])[1:-1]}', horizontalalignment='left', verticalalignment='center', transform=ax[1,1].transAxes)
 ax[0, 0].set_xlim(16.25,20.6)
 ax[0, 0].set_ylim(0.01)
-fig.legend(loc='upper center', prop={'size': 8})
+ax[0, 0].legend(loc='lower left', prop={'size': 8})
 plt.savefig('figures/correlation/santa/correlation_single_fit_santa.png')
 
 
 #single fit function: continuity
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True)
 ax[0,0].scatter(dt_aod, data_aod[:,0], s=10, label='CE318-T')
-ax[0,0].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,0], corr_fitr), s=10, label='CoSQM derived AOD')
+ax[0,0].scatter(dt_santa_corr, cosqm_aod_r, s=10, label='CoSQM derived AOD')
 ax[0,1].scatter(dt_aod, data_aod[:,1], s=10)
-ax[0,1].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,1], corr_fitg), s=10)
+ax[0,1].scatter(dt_santa_corr, cosqm_aod_g, s=10)
 ax[1,0].scatter(dt_aod, data_aod[:,2], s=10)
-ax[1,0].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,2], corr_fitb), s=10)
+ax[1,0].scatter(dt_santa_corr, cosqm_aod_b, s=10)
 ax[1,0].tick_params('x', labelrotation=45)
 ax[1,1].scatter(dt_aod, data_aod[:,3], s=10)
-ax[1,1].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,3], corr_fity), s=10)
+ax[1,1].scatter(dt_santa_corr, cosqm_aod_y, s=10)
 ax[1,1].tick_params('x', labelrotation=45)
 ax[0, 0].set_yscale('log')
 fig.text(0.5, 0.04, 'Date', ha='center', fontsize=15)
 fig.text(0.04, 0.5, 'Correlated AOD', va='center', rotation='vertical', fontsize=15)
 ax[0,0].legend()
-ax[0, 0].text(0.25,0.75, f'{cosqm_bands[1]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,0].transAxes, fontsize=15)
-ax[0, 1].text(0.25,0.75, f'{cosqm_bands[2]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,1].transAxes, fontsize=15)
-ax[1, 0].text(0.25,0.75, f'{cosqm_bands[3]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,0].transAxes, fontsize=15)
-ax[1, 1].text(0.25,0.75, f'{cosqm_bands[4]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,1].transAxes, fontsize=15)
+ax[0, 0].text(0.25,0.75, f'{cosqm_bands[0]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,0].transAxes, fontsize=15)
+ax[0, 1].text(0.25,0.75, f'{cosqm_bands[1]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,1].transAxes, fontsize=15)
+ax[1, 0].text(0.25,0.75, f'{cosqm_bands[2]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,0].transAxes, fontsize=15)
+ax[1, 1].text(0.25,0.75, f'{cosqm_bands[3]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,1].transAxes, fontsize=15)
 plt.savefig('figures/continuity/continuity_santa_20200521.png')
 
 
-def angstrom_from_aod(wl1, wl2, aod1, aod2):
-    return -np.log(aod1/aod2)/np.log(wl1/wl2)
+def angstrom_from_aod(ind1, ind2):
+    return -np.log(cosqm_aod_all[:,ind1]/cosqm_aod_all[:,ind2])/np.log(cosqm_bands[ind1]/cosqm_bands[ind2])
 
-angstrom_aod = np.vstack((angstrom_am, angstrom_pm))
-cosqm_santa_angstrom = angstrom_from_aod(514, 562, fit_func1(cosqm_santa_corr[:,2], corr_fitb), fit_func1(cosqm_santa_corr[:,3], corr_fity))
-
+cosqm_santa_angstrom = angstrom_from_aod(1,2)
 
 #single fit function: continuity Angstrom
-fig, ax = plt.subplots(1,1)
-ax.scatter(dt_aod, data_angstrom, s=10, label='CE318-T 440-675nm AE')
+fig, ax = plt.subplots(1,1, dpi=150)
 ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=10, label='CoSQM derived 514-629nm AE')
+ax.scatter(dt_aod, data_angstrom, s=10, label='CE318-T derived 440-679nm AE')
 ax.tick_params('x', labelrotation=45)
 #ax.set_yscale('log')
 fig.text(0.5, 0.04, 'Date', ha='center', fontsize=15)
@@ -781,8 +767,6 @@ plt.savefig('figures/continuity/continuity_santa_angstrom.png')
 
 
 
-##########################
-##########################
 
 
 
@@ -790,65 +774,11 @@ plt.savefig('figures/continuity/continuity_santa_angstrom.png')
 
 
 
-# seperate fit functions
-fig, ax = plt.subplots(2,2, sharex=True, sharey=True, figsize=(10,6))
-ax[0, 0].scatter(cosqm_am[:,1], aod_am[:,0], label='dusk',c=c1)
-ax[0, 0].scatter(cosqm_pm[:,1], aod_pm[:,0], label='dawn',c=c2)
-ax[0, 0].plot(xs, fit_func1(xs, corr_round[0]), c=c1)
-ax[0, 0].plot(xs, fit_func1(xs, corr_round[1]), c=c2)
-ax[0, 1].scatter(cosqm_am[:,2], aod_am[:,1],c=c1)
-ax[0, 1].scatter(cosqm_pm[:,2], aod_pm[:,1],c=c2)
-ax[0, 1].plot(xs, fit_func1(xs, corr_round[2]), c=c1)
-ax[0, 1].plot(xs, fit_func1(xs, corr_round[3]), c=c2)
-ax[1, 0].scatter(cosqm_am[:,3], aod_am[:,2],c=c1)
-ax[1, 0].scatter(cosqm_pm[:,3], aod_pm[:,2],c=c2)
-ax[1, 0].plot(xs, fit_func1(xs, corr_round[4]), c=c1)
-ax[1, 0].plot(xs, fit_func1(xs, corr_round[5]), c=c2)
-ax[1, 1].scatter(cosqm_am[:,4], aod_am[:,3],c=c1)
-ax[1, 1].scatter(cosqm_pm[:,4], aod_pm[:,3],c=c2)
-ax[1, 1].plot(xs, fit_func1(xs, corr_round[6]), c=c1)
-ax[1, 1].plot(xs, fit_func1(xs, corr_round[7]), c=c2)
-fig.text(0.5, 0.04, 'CoSQM magnitude', ha='center')
-fig.text(0.04, 0.5, 'AOD', va='center', rotation='vertical')
-fig.canvas.set_window_title(f'Santa Cruz de Tenerife')
-ax[0, 0].text(0.75,0.75, f'{cosqm_bands[1]} nm,\n dusk: {str(corr_round[0])[1:-1]}\n dawn: {str(corr_round[1])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[0,0].transAxes)
-ax[0, 1].text(0.75,0.75, f'{cosqm_bands[2]} nm,\n dusk: {str(corr_round[2])[1:-1]}\n dawn: {str(corr_round[3])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[0,1].transAxes)
-ax[1, 0].text(0.75,0.75, f'{cosqm_bands[3]} nm,\n dusk: {str(corr_round[4])[1:-1]}\n dawn: {str(corr_round[5])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[1,0].transAxes)
-ax[1, 1].text(0.75,0.75, f'{cosqm_bands[4]} nm,\n dusk: {str(corr_round[6])[1:-1]}\n dawn: {str(corr_round[7])[1:-1]}', horizontalalignment='center', verticalalignment='center', transform=ax[1,1].transAxes)
-ax[0, 0].set_xlim(17.5,21)
-ax[0, 0].set_ylim(1e-2,20)
-ax[0, 0].set_yscale('log')
-fig.text(0.5, 0.9, 'Fit function: $-a*log^{x/b}$', ha='center')
-fig.legend(loc='upper center', prop={'size': 8})
 
 
-## Continuity
 
-#seperate fit funcs for am and pm (different aerosol contents through night)
-fig, ax = plt.subplots(2,2, sharex=True, sharey=True, figsize=(10,7))
-ax[0,0].scatter(dt_aod, data_aod[:,0], s=10, label='CE318-T')
-ax[0,0].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,0], corr_am_fitr), s=10, label='CoSQM dusk')
-ax[0,0].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,0], corr_pm_fitr), s=10, label='CoSQM dawn')
-ax[0,1].scatter(dt_aod, data_aod[:,1], s=10)
-ax[0,1].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,1], corr_am_fitg), s=10)
-ax[0,1].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,1], corr_pm_fitg), s=10)
-ax[1,0].scatter(dt_aod, data_aod[:,2], s=10)
-ax[1,0].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,2], corr_am_fitb), s=10)
-ax[1,0].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,2], corr_pm_fitb), s=10)
-ax[1,0].tick_params('x', labelrotation=45)
-ax[1,1].scatter(dt_aod, data_aod[:,3], s=10)
-ax[1,1].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,3], corr_am_fity), s=10)
-ax[1,1].scatter(dt_santa_corr, fit_func1(cosqm_santa_corr[:,3], corr_pm_fity), s=10)
-ax[1,1].tick_params('x', labelrotation=45)
-ax[0, 0].set_yscale('log')
-fig.text(0.5, 0.04, 'Date', ha='center')
-fig.text(0.04, 0.5, 'Correlated AOD', va='center', rotation='vertical')
-fig.legend(loc='upper center', prop={'size': 8})
-fig.canvas.set_window_title(f'Santa Cruz de Tenerife')
-ax[0, 0].text(0.75,0.75, f'{cosqm_bands[1]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,0].transAxes)
-ax[0, 1].text(0.75,0.75, f'{cosqm_bands[2]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,1].transAxes)
-ax[1, 0].text(0.75,0.75, f'{cosqm_bands[3]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,0].transAxes)
-ax[1, 1].text(0.75,0.75, f'{cosqm_bands[4]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,1].transAxes)
+
+
 
 
 

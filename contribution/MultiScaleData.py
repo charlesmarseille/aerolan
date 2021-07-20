@@ -291,7 +291,7 @@ def scatter(ds,fmt=".",n_layer=None,area=False,**options):
     R = _np.concatenate(R).flatten()
     I = _np.concatenate(I).flatten()
 
-    _plt.plot(R,I,fmt,**options)
+#    _plt.plot(R,I,fmt,**options)
     return R, I
 
 def from_domain(params,data=None):
@@ -313,9 +313,15 @@ def from_domain(params,data=None):
 #cartes de contrib avec alex
 from glob import glob
 fnames = glob('*.hdf5')
-fname = fnames[150]
-a=Open(fname)
-R,I=scatter(a)
-plt.hist(R, 100, weights=I)
-plt.xlabel('Distance from source (km)')
-plt.xlim(0,45)
+fnames.sort()
+
+intens = np.array([[405, 455, 505, 555, 605, 655, 705], [5.8036499999999995e-09, 1.3746259999999998e-08, 1.203954e-08, 4.8920199999999995e-08, 7.385570000000001e-08, 1.149073e-08, 4.01189e-09]])
+
+for i in range(len(fnames)):
+	a=Open(fnames[i])
+	R,I=scatter(a)
+	_plt.hist(R, 80, weights=I*intens[1,i], label=f'{fnames[i][-10:-7]} nm')
+	_plt.xlabel('Distance from source (km)')
+	_plt.ylabel('au')
+	_plt.yscale('log')
+_plt.legend()

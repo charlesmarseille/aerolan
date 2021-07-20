@@ -1,0 +1,1 @@
+scp -P 2122 marseillec@dome.obsand.org:~/Illum_santa/Inputs/exec/aerosol_optical_depth_0.4/wavelength_*/layer_aod_0.0/layer_*/*layer_0.bin ~/illum_santa_results/
