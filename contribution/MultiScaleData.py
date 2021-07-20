@@ -312,16 +312,24 @@ def from_domain(params,data=None):
 
 #cartes de contrib avec alex
 from glob import glob
-fnames = glob('*.hdf5')
+fnames = glob('results/*.hdf5')
 fnames.sort()
 
 intens = np.array([[405, 455, 505, 555, 605, 655, 705], [5.8036499999999995e-09, 1.3746259999999998e-08, 1.203954e-08, 4.8920199999999995e-08, 7.385570000000001e-08, 1.149073e-08, 4.01189e-09]])
 
+_plt.figure(dpi=150,figsize=(6,3))
 for i in range(len(fnames)):
 	a=Open(fnames[i])
 	R,I=scatter(a)
-	_plt.hist(R, 80, weights=I*intens[1,i], label=f'{fnames[i][-10:-7]} nm')
-	_plt.xlabel('Distance from source (km)')
-	_plt.ylabel('au')
+	hist = np.histogram(R, bins=80, weights=I)
+	_plt.scatter(hist[1][:-1], hist[0], label=f'{fnames[i][-10:-7]} nm', s=10)
+#	_plt.hist(R, 80, weights=I*intens[1,i], label=f'{fnames[i][-10:-7]} nm')
+	_plt.xticks(ticks=[0,1,10,100])
+	_plt.xlabel('Distance from source ($km$)')
+	_plt.ylabel('Power density ($W/m^2/nm/km^2$)')
+	_plt.xscale('log')
 	_plt.yscale('log')
-_plt.legend()
+	_plt.vline(
+	#_plt.ylim(1e-25, 1e-16)
+_plt.legend(fontsize = 8)
+_plt.savefig('contribution_santa_aod0.13ae0.6.png')
