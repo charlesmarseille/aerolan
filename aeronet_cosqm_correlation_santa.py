@@ -614,6 +614,10 @@ wls2 = np.ones((aod_am.shape[0], 4))*np.array([675, 500, 500, 500])     # CE318-
 def aod_from_angstrom(aod2, wls1, wls2, alpha):
     return aod2*(wls1/wls2)**-alpha
 
+def angstrom_from_aod(ind1, ind2):
+    return -np.log(cosqm_aod_all[:,ind1]/cosqm_aod_all[:,ind2])/np.log(cosqm_bands[ind1]/cosqm_bands[ind2])
+
+
 aod_am_corr = aod_from_angstrom(aod_am, wls1, wls2, angstrom_am)
 aod_pm_corr = aod_from_angstrom(aod_pm, wls1, wls2, angstrom_pm)
 
@@ -691,9 +695,12 @@ cosqm_aod_all = np.array((cosqm_aod_r, cosqm_aod_g, cosqm_aod_b, cosqm_aod_y)).T
 
 #xs = np.arange(np.nanmin(cosqm_am),np.nanmax(cosqm_pm),0.001)
 xs = np.arange(15,24,0.0001)
+cosqm_santa_angstrom = angstrom_from_aod(1,2)
 
 c1='#1f77b4'
 c2='#ff7f0e'
+
+
 
 #single fit function: correlation
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True, figsize=(10,6))
@@ -750,15 +757,50 @@ ax[1, 1].text(0.25,0.75, f'{cosqm_bands[3]} nm', horizontalalignment='center', v
 plt.savefig('figures/continuity/continuity_santa_20200521.png')
 
 
-def angstrom_from_aod(ind1, ind2):
-    return -np.log(cosqm_aod_all[:,ind1]/cosqm_aod_all[:,ind2])/np.log(cosqm_bands[ind1]/cosqm_bands[ind2])
+#single fit function: continuity -> variance for uncertainty
+fig, ax = plt.subplots(2,2, sharex=True, sharey=True, dpi=150, figsize=(6,4))
+ax[0,0].scatter(dt_aod, data_aod[:,0], s=10, label='CE318-T')
+ax[0,0].scatter(dt_santa_corr, cosqm_aod_r, s=10, label='CoSQM derived AOD')
+ax[0,1].scatter(dt_aod, data_aod[:,1], s=10)
+ax[0,1].scatter(dt_santa_corr, cosqm_aod_g, s=10)
+ax[1,0].scatter(dt_aod, data_aod[:,2], s=10)
+ax[1,0].scatter(dt_santa_corr, cosqm_aod_b, s=10)
+ax[1,0].tick_params('x', labelrotation=45)
+ax[1,1].scatter(dt_aod, data_aod[:,3], s=10)
+ax[1,1].scatter(dt_santa_corr, cosqm_aod_y, s=10)
+ax[1,1].tick_params('x', labelrotation=45)
+ax[0, 0].set_yscale('log')
+ax[0,0].set_xlim(pd.Timestamp('2020-05-23 12'), pd.Timestamp('2020-05-24 10'))
+ax[0,0].set_ylim(0.12,0.22)
+#fig.text(0.5, 0.04, 'Date', ha='center', fontsize=15)
+fig.text(0.04, 0.5, 'Correlated AOD', va='center', rotation='vertical', fontsize=15)
+ax[0,0].legend(loc='lower center')
+ax[0, 0].text(0.25,0.75, f'{cosqm_bands[0]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,0].transAxes, fontsize=15)
+ax[0, 1].text(0.25,0.75, f'{cosqm_bands[1]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,1].transAxes, fontsize=15)
+ax[1, 0].text(0.25,0.75, f'{cosqm_bands[2]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,0].transAxes, fontsize=15)
+ax[1, 1].text(0.25,0.75, f'{cosqm_bands[3]} nm', horizontalalignment='center', verticalalignment='center', 
+transform=ax[1,1].transAxes, fontsize=15)
+plt.savefig('figures/continuity/continuity_santa_20200524_variance.png')
 
-cosqm_santa_angstrom = angstrom_from_aod(1,2)
+#single fit function: continuity Angstrom -> variance uncertainty
+fig, ax = plt.subplots(1,1, dpi=150, figsize=(8,5))
+ax.scatter(dt_aod, data_angstrom, s=10, label='CE318-T derived 440-679nm AE')
+ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=10, label='CoSQM derived 514-629nm AE')
+ax.tick_params('x', labelrotation=45)
+#ax.set_xlim(pd.Timestamp('2020-05-23 12'), pd.Timestamp('2020-05-24 10'))
+#ax.set_ylim(-0.4,0.5)
+#ax.set_yscale('log')
+#fig.text(0.5, 0.04, 'Date', ha='center', fontsize=15)
+fig.text(0.04, 0.5, 'Angstrom exponent', va='center', rotation='vertical', fontsize=15)
+plt.savefig('figures/continuity/continuity_santa_angstrom_variance.png')
+
+
+
 
 #single fit function: continuity Angstrom
 fig, ax = plt.subplots(1,1, dpi=150)
-ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=10, label='CoSQM derived 514-629nm AE')
 ax.scatter(dt_aod, data_angstrom, s=10, label='CE318-T derived 440-679nm AE')
+ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=10, label='CoSQM derived 514-629nm AE')
 ax.tick_params('x', labelrotation=45)
 #ax.set_yscale('log')
 fig.text(0.5, 0.04, 'Date', ha='center', fontsize=15)
