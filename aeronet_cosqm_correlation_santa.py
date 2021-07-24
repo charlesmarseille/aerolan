@@ -13,6 +13,7 @@ from matplotlib.colors import LogNorm
 from astropy import units as u
 from astropy.coordinates import SkyCoord, EarthLocation
 from astropy.time import Time
+import pytz
 
 #%matplotlib
 
@@ -60,13 +61,13 @@ def LoadDataCorrupt(path,cache={}):
 ## Cloud screening function
 def Cloudslidingwindow(data_array, window_size, threshold):
     da=np.copy(data_array)
-    d = np.lib.stride_tricks.sliding_window_view(data_array, window_shape = window_size, axis=0).copy() #start and end values lost. size of array is data_array.shape[0]-2
-    diffs = np.sum(np.abs(np.diff(d, axis=2)), axis=2)/(window_size-1)
+    dd = np.lib.stride_tricks.sliding_window_view(data_array, window_shape = window_size, axis=0).copy() #start and end values lost. size of array is data_array.shape[0]-2
+    diffs = np.sum(np.abs(np.diff(dd, axis=2)), axis=2)/(window_size-1)
     padd = np.full([1, da.shape[1]], np.nan)
     for i in range(window_size//2):
         diffs = np.insert(diffs, 0, padd, axis=0)                     #append nan to start to get same shape as input
         diffs = np.insert(diffs, diffs.shape[0], padd, axis=0)            #append nan to end to get same shape as input
-    da[diffs>threshold/(window_size-1)] = np.nan
+    da[diffs[:,0]>threshold/(window_size-1)] = np.nan
     return da
 
 
@@ -144,10 +145,6 @@ zeros_mask = (cosqm_santa!=0).all(1)
 cosqm_santa = cosqm_santa[zeros_mask]
 dt_santa = dt_santa[zeros_mask]
 
-## Cloud removal with differential between points (if difference between 2 measurements is bigger than threshold, remove data)
-
-# plt.scatter(dt_santa, cosqm_santa_diff[:,0], s=10, c='k', label='derivative cloud screening')
-
 #milky way filter
 print('milky way angles calculation')
 mw_angles = RaDecGal(dt_santa, eloc)
@@ -186,17 +183,18 @@ cosqm_santa_sun = Cloudslidingwindow(cosqm_santa_sun_nodiff, slide_window_size, 
 # (todo)
 
 # plot filtering
-# cosqm_band = 3
+# cosqm_band = 1
 # plt.figure(figsize=[5,3], dpi=100)
 # plt.scatter(dt_santa, cosqm_santa[:,cosqm_band], s=10, label='cosqm_santa')
 # plt.scatter(dt_santa_mw, cosqm_santa_mw[:,cosqm_band], s=10, alpha=0.5, label='milky way below '+str(mw_min_angle))
 # plt.scatter(dt_santa_moon, cosqm_santa_moon[:,cosqm_band], s=8, alpha=0.5, label='moon below '+str(moon_min_angle))
 # plt.scatter(dt_santa_sun, cosqm_santa_sun[:,cosqm_band], s=6, label='sun below '+str(sun_min_angle), c='k')
+# #plt.xlim(pd.Timestamp('2019-11-27'), pd.Timestamp('2019-12-01'))
 # #plt.scatter(dt_santa_moon, moon_angles[moon_mask]/10+23, s=10, label='moon angle')
 # #plt.scatter(dt_santa_moon_sun, sun_angles[sun_mask]/10+23, s=10, label='sun angle')
 # plt.legend(loc=[0,0])
-# plt.title('ZNSB Santa-Cruz - Filtered clear band')
-# plt.xlabel('date')
+# #plt.title('ZNSB Santa-Cruz - Filtered clear band')
+# #plt.xlabel('date')
 # plt.ylabel('CoSQM magnitude (mag)')
 
 
@@ -327,17 +325,19 @@ dates_color_mask[np.isin(dates_cosqm_str, dates_color_str)] = False
 dt_santa_sun = dt_santa_sun[dates_color_mask]
 cosqm_santa_sun = cosqm_santa_sun[dates_color_mask]
 
-## Verify clear minus colors (to determine if measurement errors)
-# plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0]-cosqm_santa_sun[:,1], c='r', s=10, label='clear-red')
-# plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0]-cosqm_santa_sun[:,2], c='g', s=10, label='clear-green')
-# plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0]-cosqm_santa_sun[:,3], c='b', s=10, label='clear-blue')
-# plt.scatter(dt_santa_sun, cosqm_santa_sun[:,0]-cosqm_santa_sun[:,4], c='y', s=10, label='clear-yellow')
-# plt.legend()
-# plt.title('ZNSB Santa-Cruz filtered data')
-# plt.xlabel('date')
-# plt.ylabel('CoSQM magnitude (mag)')
 
+# Sliding window filter on all bands to smooth out rapid variations (mainly caused by R channel having too high variance)
+def Sliding_window_cosqm(data_array, window_shape):
+    da = np.copy(data_array)
+    dslide = np.lib.stride_tricks.sliding_window_view(data_array, window_shape = window_size, axis=0).copy() #start and end values lost. size of array is data_array.shape[0]-2
+    dd = np.nanmean(dslide, axis=2)
+    padd = np.full([1, da.shape[1]], np.nan)
+    for i in range(window_size//2):
+        dd = np.insert(dd, 0, padd, axis=0)                     #append nan to start to get same shape as input
+        dd = np.insert(dd, dd.shape[0], padd, axis=0)            #append nan to end to get same shape as input
+    return dd
 
+cosqm_santa_sun = Sliding_window_cosqm(cosqm_santa_sun, 7)
 ################
 # Light pollution trends
 ################
@@ -348,14 +348,28 @@ c = np.copy(cosqm_santa_sun)
 c_norm = np.copy(c)
 ddays_cosqm = np.array([(date.date()-d[0].date()).days for date in d])
 hours = np.array([date.hour for date in d])
+
+
+## correct for timechange
+date2019 = pd.Timestamp('2019-10-27 02', tz='UTC')
+date2020p = pd.Timestamp('2020-03-29 01', tz='UTC')
+date2020 = pd.Timestamp('2020-10-25 02', tz='UTC')
+date2021p = pd.Timestamp('2021-03-28 01', tz='UTC')
+date2021 = pd.Timestamp('2021-10-31 02', tz='UTC')
+d_local = np.copy(dt_santa_sun)
+td = pd.Timedelta('01h')
+d_local[(d_local>date2020p) & (d_local<date2020)] += td
+d_local[(d_local>date2021p) & (d_local<date2021)] += td
+hours_local = np.array([date.hour for date in d_local])
+
 months = np.array([date.month for date in d])
 
 for day in np.unique(ddays_cosqm):
 	d_mask = np.zeros(ddays_cosqm.shape[0], dtype=bool)
-	d_mask[(ddays_cosqm == day) & (hours < 12)] = True
-	d_mask[(ddays_cosqm == day-1) & (hours > 12)] = True 
+	d_mask[(ddays_cosqm == day) & (hours_local < 12)] = True
+	d_mask[(ddays_cosqm == day-1) & (hours_local > 12)] = True 
 	d_mask_mean = d_mask.copy()
-	d_mask_mean[hours != 1] = False
+	d_mask_mean[hours_local != 1] = False
 #	c_mean = np.ma.array(c, mask=np.isnan(c))[d_mask_mean].mean(axis=0)
 	c_mean = np.nanmean(c[d_mask_mean],axis=0)
 	c_norm[d_mask] -= c_mean
@@ -366,17 +380,16 @@ c_norm[c_norm > 1.8] = np.nan
 
 
 #Make plots
-d = np.copy(dt_santa_sun)
 
 weekdays_str = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
 months_str = ['January', 'Feburary', 'March', 'April', 'May', 'June', 'July', 'August', 'Septembre', 'October', 'November', 'December']
-weekdays = np.array([ date.weekday() for date in d ])
+weekdays = np.array([ date.weekday() for date in d_local ])
 markers = ['.', '1', '2', '3', '4', 'o', 's']
 
 
 hours_float = np.array([ date.hour+                    #WATCH OUT FOR TIMEZONE HERE!
 	date.minute/60+
-	date.second/3600 for date in d ])
+	date.second/3600 for date in d_local ])
 hours_float[hours_float>12]-=24
 
 bands = ['clear', 'red', 'green', 'yellow', 'blue']
@@ -419,9 +432,10 @@ xs = np.linspace(hours_float.min()-0.5, hours_float.max()+0.5, 1001)
 
 
 #hist 2d
+band = 1
 plt.figure(dpi=150,figsize=(7,4))
-plt.hist2d(hours_float[np.isfinite(c_norm)[:,3]], c_norm[:,3][np.isfinite(c_norm)[:,3]], 80, cmap='inferno')
-plt.hist2d(hours_float[np.isfinite(c_norm)[:,3]], c_norm[:,3][np.isfinite(c_norm)[:,3]], 80, cmap='inferno', norm=LogNorm())
+plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno')
+plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno', norm=LogNorm())
 plt.plot(xs, second_order(xs, fit_params_g[0], fit_params_g[1], fit_params_g[2]), label='second order fit', c='c')
 plt.xlabel('Time from midnight (h)')
 plt.ylabel('Normalized ZNSB (mag)')
@@ -429,7 +443,7 @@ cbar = plt.colorbar(format='%.0f', label='counts')
 cbar.set_ticks(np.arange(1,11,1))
 cbar.update_ticks()
 cbar.set_ticklabels(np.arange(1,11,1))
-plt.savefig('figures/trend/normalized_cosqm_503nm.png')
+plt.savefig(f'figures/trend/normalized_cosqm_{cosqm_bands[band-1]}.png')
 
 # Correct filtered data with fit curve
 cosqm_santa_2nd = np.array([second_order(hours_float, fit_params_c[0], fit_params_c[1], fit_params_c[2]),
@@ -459,10 +473,6 @@ c_tot = np.array((c_norm[:,1]+np.mean(cosqm_santa_sun[:,1][np.where((hours_float
 c_norm[:,2]+np.mean(cosqm_santa_sun[:,2][np.where((hours_float ==1) | (hours_float ==2))]),
 c_norm[:,3]+np.mean(cosqm_santa_sun[:,3][np.where((hours_float ==1) | (hours_float ==2))]),
 c_norm[:,4]+np.mean(cosqm_santa_sun[:,4][np.where((hours_float ==1) | (hours_float ==2))]))).T
-
-
-a = np.array((hours_float, cosqm_santa_2nd))
-a.sort(axis=0)
 
 x = np.arange(-2,6, 0.01)
 
@@ -637,8 +647,8 @@ wls2 = np.ones((aod_am.shape[0], 4))*np.array([675, 500, 500, 500])     # CE318-
 def aod_from_angstrom(aod2, wls1, wls2, alpha):
     return aod2*(wls1/wls2)**-alpha
 
-def angstrom_from_aod(ind1, ind2):
-    return -np.log(cosqm_aod_all[:,ind1]/cosqm_aod_all[:,ind2])/np.log(cosqm_bands[ind1]/cosqm_bands[ind2])
+def angstrom_from_aod(arr, bands, ind1, ind2):
+    return -np.log(arr[:,ind1]/arr[:,ind2])/np.log(bands[ind1]/bands[ind2])
 
 
 aod_am_corr = aod_from_angstrom(aod_am, wls1, wls2, angstrom_am)
@@ -662,7 +672,7 @@ def fit_func1(x, params):
 
 
 #set limit to constant in second order equation to assure always positive values
-param_bounds=([1,1],[30,50])
+param_bounds=([0,10],[15,25])
 p0 = [7, 20]
 
 #single fit functions for both dusk and dawn correlated points
@@ -703,6 +713,13 @@ cosqm_aod_g = fit_func1(cosqm_santa_corr[:,1], corr_fitg)
 cosqm_aod_b = fit_func1(cosqm_santa_corr[:,2], corr_fitb)
 cosqm_aod_y = fit_func1(cosqm_santa_corr[:,3], corr_fity)
 
+
+#sigma clip on correlated AOD (crazy AOD values from imperfect AOD-ZNSB fit)
+threshold = 0.1
+cosqm_aod_r[cosqm_aod_r<threshold] = np.nan
+cosqm_aod_g[cosqm_aod_g<threshold] = np.nan
+cosqm_aod_b[cosqm_aod_b<threshold] = np.nan
+cosqm_aod_y[cosqm_aod_y<threshold] = np.nan
 cosqm_aod_all = np.array((cosqm_aod_r, cosqm_aod_g, cosqm_aod_b, cosqm_aod_y)).T
 
 #plt.figure()
@@ -714,11 +731,18 @@ cosqm_aod_all = np.array((cosqm_aod_r, cosqm_aod_g, cosqm_aod_b, cosqm_aod_y)).T
 #plt.legend()
 
 
+# sliding_window for AE on 15min interval
+def ae_slide_window(array, window_size):
+    da = np.copy(array)
+
+
+
+
 #Correlation plots for the 4 color bands
 
 #xs = np.arange(np.nanmin(cosqm_am),np.nanmax(cosqm_pm),0.001)
 xs = np.arange(15,24,0.0001)
-cosqm_santa_angstrom = angstrom_from_aod(1,2)
+cosqm_santa_angstrom = angstrom_from_aod(cosqm_aod_all, cosqm_bands, 0, 2)
 
 c1='#1f77b4'
 c2='#ff7f0e'
@@ -764,7 +788,7 @@ plt.savefig('figures/correlation/santa/correlation_single_fit_santa.png')
 #single fit function: continuity 2020-02-21
 msize=0.5
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True, dpi=150, figsize=(10,6))
-plt.setp(ax, xticks=[pd.Timestamp('2020-02-22'), pd.Timestamp('2020-02-27'), pd.Timestamp('2020-03-03')], xticklabels=['2020-02-22', '2020-02-27', '2020-03-03'])
+#plt.setp(ax, xticks=[pd.Timestamp('2020-02-22'), pd.Timestamp('2020-02-27'), pd.Timestamp('2020-03-03')], xticklabels=['2020-02-22', '2020-02-27', '2020-03-03'])
 ax[0,0].scatter(dt_aod, data_aod[:,0], s=msize, label='CE318-T')
 ax[0,0].scatter(dt_santa_corr, cosqm_aod_r, s=msize, label='CoSQM derived AOD')
 ax[0,1].scatter(dt_aod, data_aod[:,1], s=msize)
@@ -784,20 +808,20 @@ ax[0, 0].text(0.5,0.1, f'{cosqm_bands[0]} nm', horizontalalignment='center', ver
 ax[0, 1].text(0.5,0.1, f'{cosqm_bands[1]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[0,1].transAxes, fontsize=10)
 ax[1, 0].text(0.5,0.1, f'{cosqm_bands[2]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,0].transAxes, fontsize=10)
 ax[1, 1].text(0.5,0.1, f'{cosqm_bands[3]} nm', horizontalalignment='center', verticalalignment='center', transform=ax[1,1].transAxes, fontsize=10)
-plt.savefig('figures/continuity/continuity_aod_20200220.png')
+#plt.savefig('figures/continuity/continuity_aod_20200220.png')
 
 
 #single fit function: continuity Angstrom 2020-02-21
 fig, ax = plt.subplots(1,1, dpi=150, figsize=(10,6))
-plt.setp(ax, xticks=[pd.Timestamp('2020-02-22'), pd.Timestamp('2020-02-27'), pd.Timestamp('2020-03-03')], xticklabels=['2020-02-22', '2020-02-27', '2020-03-03'])
+#plt.setp(ax, xticks=[pd.Timestamp('2020-02-22'), pd.Timestamp('2020-02-27'), pd.Timestamp('2020-03-03')], xticklabels=['2020-02-22', '2020-02-27', '2020-03-03'])
 ax.scatter(dt_aod, data_angstrom, s=0.5, label='CE318-T derived 440-679nm AE')
-ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=0.5, label='CoSQM derived 503-571nm AE')
+ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=0.5, label='CoSQM derived 503-667nm AE')
 ax.set_xlim(pd.Timestamp('2020-02-20'), pd.Timestamp('2020-03-04'))
 ax.set_ylim(-1.34,3.73)
-ax.set_ylabel('503-571nm Angstrom exponent')
+ax.set_ylabel('503-667nm Angstrom exponent')
 ax.legend()
 #ax.set_yscale('log')
-plt.savefig('figures/continuity/continuity_angstrom_20200220.png')
+#plt.savefig('figures/continuity/continuity_angstrom_20200220.png')
 
 
 
@@ -831,10 +855,10 @@ plt.savefig('figures/continuity/continuity_aod_20200521.png')
 fig, ax = plt.subplots(1,1, dpi=150, figsize=(10,6))
 plt.setp(ax, xticks=[pd.Timestamp('2020-05-22'), pd.Timestamp('2020-05-25'), pd.Timestamp('2020-05-28')], xticklabels=['2020-05-22', '2020-05-25', '2020-05-28'])
 ax.scatter(dt_aod, data_angstrom, s=0.5, label='CE318-T derived 440-679nm AE')
-ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=0.5, label='CoSQM derived 503-571nm AE')
+ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=0.5, label='CoSQM derived 503-667nm AE')
 ax.set_xlim(pd.Timestamp('2020-05-21'), pd.Timestamp('2020-05-29'))
 ax.set_ylim(-1.34,3.73)
-ax.set_ylabel('503-571nm Angstrom exponent')
+ax.set_ylabel('503-667nm Angstrom exponent')
 ax.legend()
 #ax.set_yscale('log')
 plt.savefig('figures/continuity/continuity_angstrom_20200521.png')
@@ -868,7 +892,7 @@ plt.savefig('figures/continuity/continuity_aod_20200524_variance.png')
 fig, ax = plt.subplots(1,1, dpi=150, figsize=(8,5))
 plt.setp(ax, xticks=[pd.Timestamp('2020-05-22 15'), pd.Timestamp('2020-05-24 00'), pd.Timestamp('2020-05-25 10')], xticklabels=['2020-05-22 15 ', '2020-05-24 00', '2020-05-25 12'])
 ax.scatter(dt_aod, data_angstrom, s=msize, label='CE318-T derived 440-679nm AE')
-ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=msize, label='CoSQM derived 503-571nm AE')
+ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=msize, label='CoSQM derived 503-667nm AE')
 ax.set_xlim(pd.Timestamp('2020-05-22 10'), pd.Timestamp('2020-05-25 12'))
 ax.set_ylim(-0.5,0.798)
 #ax.set_ylim(-0.4,0.5)
