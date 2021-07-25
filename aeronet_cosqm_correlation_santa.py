@@ -436,7 +436,7 @@ band = 1
 plt.figure(dpi=150,figsize=(7,4))
 plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno')
 plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno', norm=LogNorm())
-plt.plot(xs, second_order(xs, fit_params_g[0], fit_params_g[1], fit_params_g[2]), label='second order fit', c='c')
+plt.plot(xs, second_order(xs, fit_params[0, band], fit_params[1, band], fit_params[2, band]), label='second order fit 667nm', c='c')
 plt.xlabel('Time from midnight (h)')
 plt.ylabel('Normalized ZNSB (mag)')
 cbar = plt.colorbar(format='%.0f', label='counts')
@@ -714,39 +714,32 @@ cosqm_aod_b = fit_func1(cosqm_santa_corr[:,2], corr_fitb)
 cosqm_aod_y = fit_func1(cosqm_santa_corr[:,3], corr_fity)
 
 
-#sigma clip on correlated AOD (crazy AOD values from imperfect AOD-ZNSB fit)
-threshold = 0.1
+# sigma clip on correlated AOD (crazy AOD values from imperfect AOD-ZNSB fit)
+threshold = 0.04
 cosqm_aod_r[cosqm_aod_r<threshold] = np.nan
 cosqm_aod_g[cosqm_aod_g<threshold] = np.nan
 cosqm_aod_b[cosqm_aod_b<threshold] = np.nan
 cosqm_aod_y[cosqm_aod_y<threshold] = np.nan
 cosqm_aod_all = np.array((cosqm_aod_r, cosqm_aod_g, cosqm_aod_b, cosqm_aod_y)).T
 
-#plt.figure()
-#plt.title('AOD dusk and dawn values')
-#plt.scatter(np.unique(dt_aod_date), aod_am[:,3], label='aeronet_am', s=15)
-#plt.scatter(np.unique(dt_aod_date), aod_pm[:,3], label='aeronet_pm', s=15)
-#plt.xlabel('days from july 2019')
-#plt.ylabel('AOD')
-#plt.legend()
+# fit AE for each 4 points cosqm measurement
+def FitAe(wl,alpha):
+    return wl**-alpha
 
+def fit_except(data_array):                         # Some cosqm aod values do not converge while fitting
+    try: 
+        return curve_fit(FitAe, cosqm_bands, data_array)[0]
+    except RuntimeError:
+        print(f"Error - curve_fit failed: cosqm aod values {data_array}")
+        return np.array((None), dtype=object)
 
-# sliding_window for AE on 15min interval
-def ae_slide_window(array, window_size):
-    da = np.copy(array)
+ae_fit_params = np.zeros((cosqm_aod_all.shape[0]))
+ae_fit_params[:] = np.nan
+cosqm_nonnans = np.where(~np.isnan(cosqm_aod_all).any(axis=1))[0]
+ae_fit_params[cosqm_nonnans] = np.vstack([fit_except(cosqm_aods) for cosqm_aods in cosqm_aod_all[cosqm_nonnans]])[:,0]
+ae_fit_succeed = ae_fit_params != None
 
-
-
-
-#Correlation plots for the 4 color bands
-
-#xs = np.arange(np.nanmin(cosqm_am),np.nanmax(cosqm_pm),0.001)
-xs = np.arange(15,24,0.0001)
-cosqm_santa_angstrom = angstrom_from_aod(cosqm_aod_all, cosqm_bands, 0, 2)
-
-c1='#1f77b4'
-c2='#ff7f0e'
-
+cosqm_ae = np.array([fit1 for fit1 in ae_fit_params[ae_fit_succeed]])
 
 
 #single fit function: correlation
@@ -783,8 +776,6 @@ ax[0, 0].legend(loc='lower left', prop={'size': 8})
 plt.savefig('figures/correlation/santa/correlation_single_fit_santa.png')
 
 
-
-
 #single fit function: continuity 2020-02-21
 msize=0.5
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True, dpi=150, figsize=(10,6))
@@ -815,14 +806,13 @@ ax[1, 1].text(0.5,0.1, f'{cosqm_bands[3]} nm', horizontalalignment='center', ver
 fig, ax = plt.subplots(1,1, dpi=150, figsize=(10,6))
 #plt.setp(ax, xticks=[pd.Timestamp('2020-02-22'), pd.Timestamp('2020-02-27'), pd.Timestamp('2020-03-03')], xticklabels=['2020-02-22', '2020-02-27', '2020-03-03'])
 ax.scatter(dt_aod, data_angstrom, s=0.5, label='CE318-T derived 440-679nm AE')
-ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=0.5, label='CoSQM derived 503-667nm AE')
+ax.scatter(dt_santa_corr, cosqm_ae, s=0.5, label=f'CoSQM derived fitted AE')
 ax.set_xlim(pd.Timestamp('2020-02-20'), pd.Timestamp('2020-03-04'))
-ax.set_ylim(-1.34,3.73)
+#ax.set_ylim(-1.34,3.73)
 ax.set_ylabel('503-667nm Angstrom exponent')
 ax.legend()
 #ax.set_yscale('log')
 #plt.savefig('figures/continuity/continuity_angstrom_20200220.png')
-
 
 
 #single fit function: continuity 2020-05-21
@@ -855,7 +845,7 @@ plt.savefig('figures/continuity/continuity_aod_20200521.png')
 fig, ax = plt.subplots(1,1, dpi=150, figsize=(10,6))
 plt.setp(ax, xticks=[pd.Timestamp('2020-05-22'), pd.Timestamp('2020-05-25'), pd.Timestamp('2020-05-28')], xticklabels=['2020-05-22', '2020-05-25', '2020-05-28'])
 ax.scatter(dt_aod, data_angstrom, s=0.5, label='CE318-T derived 440-679nm AE')
-ax.scatter(dt_santa_corr, cosqm_santa_angstrom, s=0.5, label='CoSQM derived 503-667nm AE')
+ax.scatter(dt_santa_corr, cosqm_ae, s=0.5, label='CoSQM derived fitted AE')
 ax.set_xlim(pd.Timestamp('2020-05-21'), pd.Timestamp('2020-05-29'))
 ax.set_ylim(-1.34,3.73)
 ax.set_ylabel('503-667nm Angstrom exponent')
