@@ -275,8 +275,8 @@ def scatter(ds,fmt=".",n_layer=None,area=False,**options):
         buff = ds._attrs['layers'][i]['buffer']
 
         psize = ds.pixel_size(i)/1000.
-        if area:
-            layer /= psize**2
+#        if area:
+#            layer /= psize**2		# on devient donc en W/sr/m^2/nm/km^2
 
         N = n//2 - buff
         x = _np.arange(-N,N+1) * psize
@@ -311,6 +311,11 @@ def from_domain(params,data=None):
 
 
 #cartes de contrib avec alex
+
+#HDF5 sont en W/sr/m^2/nm, Martin devrait etre d'accord avec ca.
+#
+
+
 from glob import glob
 fnames = glob('results/*.hdf5')
 fnames.sort()
@@ -321,9 +326,7 @@ _plt.figure(dpi=150,figsize=(6,3))
 for i in range(len(fnames)):
 	a=Open(fnames[i])
 	R,I=scatter(a)
-	hist = np.histogram(R, bins=80, weights=I)
-	_plt.scatter(hist[1][:-1], hist[0], label=f'{fnames[i][-10:-7]} nm', s=10)
-#	_plt.hist(R, 80, weights=I*intens[1,i], label=f'{fnames[i][-10:-7]} nm')
+	_plt.hist(R, 80, weights=I*intens[1,i], label=f'{fnames[i][-10:-7]} nm')
 	_plt.xticks(ticks=[0,1,10,100])
 	_plt.xlabel('Distance from source ($km$)')
 	_plt.ylabel('Power density ($W/m^2/nm/km^2$)')
