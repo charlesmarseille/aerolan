@@ -327,7 +327,7 @@ cosqm_santa_sun = cosqm_santa_sun[dates_color_mask]
 
 
 # Sliding window filter on all bands to smooth out rapid variations (mainly caused by R channel having too high variance)
-def Sliding_window_cosqm(data_array, window_shape):
+def Sliding_window_cosqm(data_array, window_size):
     da = np.copy(data_array)
     dslide = np.lib.stride_tricks.sliding_window_view(data_array, window_shape = window_size, axis=0).copy() #start and end values lost. size of array is data_array.shape[0]-2
     dd = np.nanmean(dslide, axis=2)
@@ -456,7 +456,7 @@ dt_santa_final = dt_santa_sun
 cosqm_santa_final = np.copy(cosqm_santa_sun) - cosqm_santa_2nd
 ddays_cosqm = np.array([(date.date()-d[0].date()).days for date in dt_santa_final])
 dt_santa_date = dt_santa_final.dt.date
-
+dt_santa_dt = dt_santa_final.dt.to_pydatetime()
 
 #Plot effect of corrected trends on specific nights
 fig,ax = plt.subplots(dpi=150, figsize=(7,4))
@@ -723,23 +723,43 @@ cosqm_aod_y[cosqm_aod_y<threshold] = np.nan
 cosqm_aod_all = np.array((cosqm_aod_r, cosqm_aod_g, cosqm_aod_b, cosqm_aod_y)).T
 
 # fit AE for each 4 points cosqm measurement
-def FitAe(wl,alpha):
-    return wl**-alpha
+def FitAe(wl, k, alpha):
+    return k*wl**-alpha
 
 def fit_except(data_array):                         # Some cosqm aod values do not converge while fitting
-    try: 
-        return curve_fit(FitAe, cosqm_bands, data_array)[0]
+    try:
+        return curve_fit(FitAe, cosqm_bands, data_array, p0=(1000, 0.5))[0]
     except RuntimeError:
         print(f"Error - curve_fit failed: cosqm aod values {data_array}")
-        return np.array((None), dtype=object)
+        return np.array((None, None), dtype=object)
 
-ae_fit_params = np.zeros((cosqm_aod_all.shape[0]))
+ae_fit_params = np.zeros((cosqm_aod_all.shape[0], 2))
 ae_fit_params[:] = np.nan
-cosqm_nonnans = np.where(~np.isnan(cosqm_aod_all).any(axis=1))[0]
-ae_fit_params[cosqm_nonnans] = np.vstack([fit_except(cosqm_aods) for cosqm_aods in cosqm_aod_all[cosqm_nonnans]])[:,0]
-ae_fit_succeed = ae_fit_params != None
+cosqm_nonnans = ~np.isnan(cosqm_aod_all).any(axis=1)
+ae_fit_params[cosqm_nonnans] = np.vstack([fit_except(cosqm_aods) for cosqm_aods in cosqm_aod_all[cosqm_nonnans]])
+ae_fit_succeed = ~np.isnan(ae_fit_params[:,0])
 
-cosqm_ae = np.array([fit1 for fit1 in ae_fit_params[ae_fit_succeed]])
+cosqm_ae = np.array([(fit1, fit2) for fit1, fit2 in ae_fit_params])
+
+
+
+
+# Plot fitted AE from cosqm_aod values
+dt_santa_final_date = np.array([date.to_datetime64() for date in dt_santa_final])
+x_ae = np.arange(500,700, 0.1)
+inds=np.arange(2550, 2555, 1)    # to find specific nights: np.where(dt_santa_date == pd.to_datetime('2020-02-24'))
+
+for ind in inds:
+    plt.scatter(cosqm_bands, cosqm_aod_all[ind], label=f'{dt_santa_final_date[ind]}')
+    plt.plot(x_ae, FitAe(x_ae, ae_fit_params[ind][0], ae_fit_params[ind][1]))
+plt.legend()
+
+# plot znsb to understand why alpha goes crazy for high ZNSB and small ZNSB differences between bands
+colors=['r', 'g', 'b', 'y']
+for i in range(4):
+    plt.scatter(dt_santa_dt, cosqm_santa_final[:, i+1], c=colors[i], s=10)
+
+
 
 
 #single fit function: correlation
@@ -806,7 +826,7 @@ ax[1, 1].text(0.5,0.1, f'{cosqm_bands[3]} nm', horizontalalignment='center', ver
 fig, ax = plt.subplots(1,1, dpi=150, figsize=(10,6))
 #plt.setp(ax, xticks=[pd.Timestamp('2020-02-22'), pd.Timestamp('2020-02-27'), pd.Timestamp('2020-03-03')], xticklabels=['2020-02-22', '2020-02-27', '2020-03-03'])
 ax.scatter(dt_aod, data_angstrom, s=0.5, label='CE318-T derived 440-679nm AE')
-ax.scatter(dt_santa_corr, cosqm_ae, s=0.5, label=f'CoSQM derived fitted AE')
+ax.scatter(dt_santa_corr, cosqm_ae[:,1], s=0.5, label=f'CoSQM derived fitted AE')
 ax.set_xlim(pd.Timestamp('2020-02-20'), pd.Timestamp('2020-03-04'))
 #ax.set_ylim(-1.34,3.73)
 ax.set_ylabel('503-667nm Angstrom exponent')
