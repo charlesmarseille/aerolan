@@ -1,0 +1,596 @@
+%  LaTeX support: latex@mdpi.com 
+%  In case you need support, please attach all files that are necessary for compiling as well as the log file, and specify the details of your LaTeX setup (which operating system and LaTeX version / tools you are using).
+
+%=================================================================
+\documentclass[remotesensing,article,submit,moreauthors,pdftex]{Definitions/mdpi} 
+
+% If you would like to post an early version of this manuscript as a preprint, you may use preprint as the journal and change 'submit' to 'accept'. The document class line would be, e.g., \documentclass[preprints,article,accept,moreauthors,pdftex]{mdpi}. This is especially recommended for submission to arXiv, where line numbers should be removed before posting. For preprints.org, the editorial staff will make this change immediately prior to posting.
+
+%--------------------
+% Class Options:
+%--------------------
+
+%---------
+% article
+%---------
+% The default type of manuscript is "article", but can be replaced by: 
+% abstract, addendum, article, benchmark, book, bookreview, briefreport, casereport, changes, comment, commentary, communication, conceptpaper, conferenceproceedings, correction, conferencereport, expressionofconcern, extendedabstract, meetingreport, creative, datadescriptor, discussion, editorial, essay, erratum, hypothesis, interestingimages, letter, meetingreport, newbookreceived, obituary, opinion, projectreport, reply, retraction, review, perspective, protocol, shortnote, supfile, technicalnote, viewpoint
+% supfile = supplementary materials
+
+%----------
+% submit
+%----------
+% The class option "submit" will be changed to "accept" by the Editorial Office when the paper is accepted. This will only make changes to the frontpage (e.g., the logo of the journal will get visible), the headings, and the copyright information. Also, line numbering will be removed. Journal info and pagination for accepted papers will also be assigned by the Editorial Office.
+
+%------------------
+% moreauthors
+%------------------
+% If there is only one author the class option oneauthor should be used. Otherwise use the class option moreauthors.
+
+%---------
+% pdftex
+%---------
+% The option pdftex is for use with pdfLaTeX. If eps figures are used, remove the option pdftex and use LaTeX and dvi2pdf.
+
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[T1]{fontenc}
+\usepackage[labelformat=simple]{subcaption}
+\renewcommand\thesubfigure{\alph{subfigure}}
+\DeclareCaptionLabelFormat{subcaptionlabel}{\normalfont(\textbf{#2}\normalfont)}
+\captionsetup[subfigure]{labelformat=subcaptionlabel}
+\usepackage{hyperref}
+\newcommand{\angstr}{\AA{}ngstr\"om~}
+
+%=================================================================
+\firstpage{1} 
+\makeatletter 
+\setcounter{page}{\@firstpage} 
+\makeatother
+\pubvolume{xx}
+\issuenum{1}
+\articlenumber{5}
+\pubyear{2019}
+\copyrightyear{2019}
+%\externaleditor{Academic Editor: name}
+\history{Received: date; Accepted: date; Published: date}
+%\updates{yes} % If there is an update available, un-comment this line
+
+%% MDPI internal command: uncomment if new journal that already uses continuous page numbers 
+%\continuouspages{yes}
+
+%------------------------------------------------------------------
+% The following line should be uncommented if the LaTeX file is uploaded to arXiv.org
+%\pdfoutput=1
+
+%=================================================================
+% Add packages and commands here. The following s are loaded in our class file: fontenc, calc, indentfirst, fancyhdr, graphicx, lastpage, ifthen, lineno, float, amsmath, setspace, enumitem, mathpazo, booktabs, titlesec, etoolbox, amsthm, hyphenat, natbib, hyperref, footmisc, geometry, caption, url, mdframed, tabto, soul, multirow, microtype, tikz
+
+%=================================================================
+%% Please use the following mathematics environments: Theorem, Lemma, Corollary, Proposition, Characterization, Property, Problem, Example, ExamplesandDefinitions, Hypothesis, Remark, Definition, Notation, Assumption
+%% For proofs, please use the proof environment (the amsthm package is loaded by the MDPI class).
+
+%=================================================================
+% Full title of the paper (Capitalized)
+\Title{Remote sensing of the aerosol optical depth at night with the CoSQM sky brightness data}
+
+% Author Orchid ID: enter ID or remove command
+\newcommand{\orcidauthorA}{0000-0000-000-000X} % Add \orcidA{} behind the author's name
+%\newcommand{\orcidauthorB}{0000-0000-000-000X} % Add \orcidB{} behind the author's name
+
+% Authors, for the paper (add full first names)
+\Author{Charles Marseille $^{2}$, Martin Aubé $^{1,2,3,\dagger,*}$, Africa Barreto $^{4}$ and Alexandre Simoneau  $^{2}$}  
+% Authors, for metadata in PDF
+\AuthorNames{Charles Marseille, Martin Aubé, Africa Barreto, Alexandre Simoneau}
+
+% Affiliations / Addresses (Add [1] after \address if there is only one affiliation.)
+\address{%
+$^{1}$ \quad  C\'egep de Sherbrooke, Canada\\
+$^{2}$ \quad D\'epartement de g\'eomatique appliqu\'ee, Universit\'e de Sherbrooke, Canada\\
+$^{3}$ \quad Physics department, Bishop's University, Canada\\
+$^{4}$ \quad Centro de Investigación Atmosférica de Izaña, Agencia Estatal de Meteorología, Spain}
+
+
+% Contact information of the corresponding author
+\corres{Correspondence: martin.aube@cegepsherbrooke.qc.ca; Tel.: 1-819-564-6350 \#4146}
+
+% Current address and/or shared authorship
+\firstnote{Current address: 475 rue du C\'egep, Sherbrooke, Qu\'ebec, Canada J1E 4K1} 
+
+% The commands \thirdnote{} till \eighthnote{} are available for further notes
+
+%\simplesumm{} % Simple summary
+
+%\conference{} % An extended version of a conference paper
+
+% Abstract (Do not insert blank lines, i.e. \\) 
+\abstract{The aerosol optical depth is an important indicator of aerosol particle properties and associated radiative impacts.  The determination of the aerosol optical depth is therefore very important to achieve relevant climate modeling. Most remote sensing techniques of the aerosol optical depth are applicable to daytime given the high level of light available. The night represents half of the time but in such conditions only a few remote sensing techniques are available. Among these techniques, the most reliable are moon photometers and star photometers. Moon photometers only work when the moon is up in the sky (basically half of the nocturnal periods) and star photometers are more effective when the moon is below the horizon. Moreover, star photometers are sensitive to light pollution and therefore not well suited to urban or industrial areas where most of the anthropogenic aerosols resides. In this paper, we  attempt to fill gaps in the spatio temporal aerosol detection by performing night sky brightness measurements with a multispectral photometer. We are using an empirical relationship between the zenith artificial night sky brightness and the aerosol optical depth. Such method is especially suited to moonless nights and to light polluted regions. We discuss relevance and typical accuracy of the method by using the novel CoSQM photometer, a cheap and open source instrument. We analyse the behavior of the method by using a photometer installed on the island of Tenerife, Spain.}
+% Keywords
+\keyword{Artificial Light at Night; 
+Aerosol optical depth ; Radiometry ; Multispectral  ; Measurement}
+
+% The fields PACS, MSC, and JEL may be left empty or commented out if not applicable
+%\PACS{J0101}
+%\MSC{}
+%\JEL{}
+
+ 
+%\setcounter{secnumdepth}{4}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+The aerosol optical depth (AOD), which characterise the total aerosol optical extinction at a given wavelength, is a key parameter in the monitoring of aerosol optical properties. AOD is sensitive to aerosol microphysical characteristics (in particular to the vertically integrated number density and to the particulate size distribution). The Angstrom exponent (AE) of hygroscopic aerosols, like sea salts and sulfates, is related to the size distribution in turn sensitive to local relative humidity.
+
+Many techniques have been developed in order to monitor the spatio-temporal variability of the AOD. A well-established method consists of observing direct solar radiation using ground based sun photometer networks such as the AErosol Robotic NETwork (AERONET) \citep{holben1998aeronet}. This method provides relatively good temporal information but very sparse spatial information because that the data are only acquired at about one hundred stations worldwide. But one important limitation is that sun photometers only operate when the sun shines. Moon photometers were designed to mitigate that limitation. A limited number of AERONET sites are equipped with moon photometers.  A second important technique is based on inversion algorithms, which exploit the atmospherically dominant signal present over dark target pixels in remotely sensed satellite images. This technique has been successfully applied over dense dark vegetation (DDV) and ocean pixels using satellite based sensors such as the Moderate Resolution Imaging Spectro-radiometer (MODIS, \citep{kaufman1998algorithm}). Satellite based inversion techniques give more comprehensive spatial information but are limited to daily sampling frequencies and are typically inferior in accuracy. Although the two techniques are somewhat complementary they do not allow AOD acquisition on a continuous basis.  
+
+In this paper, we attempt to partly fill gaps in the spatio-temporal AOD datasets using a detection methodology that links together the AOD measurements and the zenith night sky brightness measurements acquired with the multispectral Color Sky Quality Meter (CoSQM) photometer. As a first step toward a worldwide CoSQM network, four CoSQM were installed on the island of Tenerife at locations differing by their proximity to the lighting sources and by their elevation. The first goal for establishing such a network was to characterize the sky brightness over the island. This is of interest because of the presence of important astronomical facilities on Tenerife and La Palma islands. Tenerife is also a master site for atmospheric sensing science thanks to the Agencia Estatal de Meteorología (AEMET) facilities that is a reference in term of aerosol detection and related instrumental cross calibration capabilities.
+
+***sites ont des conditions de PL différentes, peu commun pour des distances faibles entre les sites.
+
+***raisons de choisir santa cruz: 
+1. haute pollution lumineuse (grandes villes)-> problème pour les méthodes usuelles (moonphoto, stellar) mais avantage pour cosqm car signal élevé
+2. instrument est entretenu plus qu'aux autres sites et a plus de données de corrélation.
+3. 
+
+
+As a first experiment with the CoSQM data, we present empirical relationships to convert the multispectral zenith night sky brightness into multispectral AOD for the site of Santa Cruz de Tenerife. This particular site being the most light polluted one equipped with a CoSQM on the Tenerife island.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Materials and Methods}
+
+\subsection{General methodology}
+
+The general methodology suggested in this paper to retreive the AOD out of the CoSQM sky brightness free of moon, twilight, Milky Way and clouds, is presented in Figure \ref{organigramme}. The basic idea is to determine the empirical relationship between the AERONET AOD and the CoSQM sky brightness. We assume that to be reliable, that method requires a set of data selection filters. We want to exclude the nights contaminated with clouds and exclude all measurement time for which the moon or the sun is below 2° and 18° under the horizon respectively. That elevation angle defines for the Sun the so-called astronomical twilight. On the remaining data, we compare the mean of the first 5 CoSQM data points of any night until midnight to its AERONET AOD equivalent, i.e. the latest values in the interval of 2pm until sunset (last measurements of that day). Such is also done for the morning, where the 5 CoSQM data points is averaged in the interval of 2am until sunrise and compared to AERONET AOD in the interval of sunrise until 10am.
+The biggest assumption of this method is that during the delay between the AERONET and CoSQM measurements, the AOD is considered to remain stable. If such is the case, once that empirical relationship is found, it is possible to apply the relationship to any CoSQM filtered data. Since that method is empirical, a different relationship could be found for each site. This fact imply that CoSQM should be installed in priority on AERONET sites. Or at least a sunphotometer must be installed temporarily close to the CoSQM in order to find the relationship. In this methodology we assume that the only variable affecting the sky brightness is the AOD. It is true that AOD is one of the most important variable to consider \citep{simoneau2021point} but one other important variability is the change in light usage according to the time and date. In this study we assume that that temporal trend is cyclical and then may be inferred and corrected assuming long enough CoSQM time series for the site. 
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{figures/organigramme.pdf}
+\caption{General methodology used to derive the aerosol optical depth out of the CoSQM cloud, moon and Milky Way free night sky brightness. Boxes in yellow are input data while green boxes are data produced by the method. The grey rectangle is the validation section.}
+\label{organigramme}
+\end{figure}
+
+\subsection{Instrumentation}
+
+\subsubsection{The CoSQM system}
+
+The CoSQM is a portable device which aims to sample the multispectral properties of nocturnal the artificial light scattered by the atmospheres. It was designed by our group to  estimate the spectral properties of the night sky brightness. CoSQM is composed of a filter wheel with five different spectral transmittance in the visible range (clear, red, blue, green and yellow (see Figure \ref{spectralresponse}) that is standing on a step motor in front of a Unihedron's Sky Quality Meter (SQM). The SQM is a sensor dedicated to the monitoring of the nocturnal sky brightness. It is panchromatic with a spectral response encompassing the visible domain with some residual sensitivity in the Near Infrared (NIR) \citep{Sanchez-sqmcolor}. The SQM sensitivity is close to zero at 1000 nm. The SQM sensitivity from 400 nm to 1000 nm is shown by the black continuous line in Figure \ref{spectralresponse}. In the CoSQM, we are using the SQM model LE (SQM-LE) which include its own ethernet interface. We decided to use the SQM in order to be backward compatible with the large amount of SQM data acquired worldwide to date and considering its high sensitivity and resolution of 0.01 mpsas ($mag/arcsec^2$). This unit is an inverted logarithmic scale that represents the brightness density (per solid angle), initially developed to characterize the visibility of stars at night. The darker the sky, the higher the mpsas.
+The CoSQM device comprise a Raspberry pi (RPI) open source linux computer. The instrument can be operated remotely via the ssh protocol and the data may be accessed via an integrated web server. The data from all the instruments belonging to our CoSQM network is automatically downloaded everyday and stored in a public server. In the second version of the CoSQM, the RPI is configured in a way that the wired network interface is dedicated to the internet connection while the WiFi interface allows the access to the system and data from any mobile device located nearby the CoSQM. In the version 1, the WiFi interface was not used. Table \ref{compcosqm} gives the main properties of the CoSQM v1 and CoSQM v2 devices. 
+
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.45\textwidth}
+\includegraphics[height=4.8 cm]{figures/v1.jpg}
+\caption{ }
+\label{CoSQMversion1}
+\end{subfigure}
+\begin{subfigure}{0.54\textwidth}
+\vspace{3pt}
+\includegraphics[height=4.8 cm]{figures/v2.jpg}
+\caption{ }
+\label{CoSQMversion2}
+\end{subfigure}
+\caption{The CoSQM device. Panel (a) shows the version 1 of the CoSQM. That specific unit is installed at AEMET Iza\~na observatory (Spain). Panel (b) shows the second version of the CoSQM. This unit is installed at Saint-Camille (Canada).} 
+\label{CoSQM}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{figures/reponse-spectrale-cosqm-neewer-filters.png}
+\caption{Relative spectral response of the 5 bands of the CoSQM. The thin black line is the spectral response of the SQM-LE as measured by \citep{Sanchez-sqmcolor}. Other bands are Neewer color filters in front of the SQM-LE. The nominal wavelength of each band is given in the legend.}
+\label{spectralresponse}
+\end{figure}
+
+
+\begin{table}
+\centering
+\caption{Features comparison of CoSQM versions. Optional features and identified with an asterisk.}
+\label{compcosqm}
+\begin{tabular}{lll}
+\hline
+Feature & v1 & v2 \\
+\hline
+Light sensor & SQM-LE & SQM-LE \\
+Filters & Neewer RGBY & Neewer RGBY \\
+Processing unit & Raspberry Pi 3b & Raspberry Pi 4b \\
+Time keeping device & DS3231 & DS3231 \\
+Sky imaging system & RPI v1.3 (day only) & RPI cam HQ (day \& night)\\
+Access to data & Wired ethernet & Wired and WiFi \\
+System state indicator & Red LED & Red LED and WiFi web server \\
+Power source & 120 VAC or 240 VAC & 5 V - 4 A  \\
+Power protection & Nothing & Integrated UPS Hat \\
+Positioning\textsuperscript{*} & GPS & GPS \\
+\hline
+\end{tabular}
+\end{table}
+
+The color detection capability is an important improvement over existing non-imaging detectors. This is particularly important in the context of the drastic undergoing change in the color of light pollution associated with the transition to the Light-Emitting Diodes (LED) technology. The CoSQM developing philosophy is based on an open science model so that we provide everything under open licence. The methods, drawings, software and documentation can be accessed from Pr. Aubé web site \citep{aubewebcosqm}.
+
+
+\subsubsection{CoSQM network}
+
+The CoSQM was designed to be used in a permanent installation mode in order to allow the implementation of a worldwide night sky color detection network. Nevertheless, it is possible to use the CoSQM as a moving device but in such a case a GPS need to be installed. Moreover, one should move slowly because the data acquisition is done every 2.5 min. Since its first release in 2018, 8 CoSQM were installed. These devices are located in a variety of sites concentrated in Canada and Spain. Table \ref{network} give the list of instrument at the moment of writing. In that table we indicated in bold font the device used in the present paper. Université de Sherbrooke site is peculiar because that there is also a Star photometer installed nearby so that we will ultimately be able to validate the method in comparison to that detection technique.
+
+
+\begin{table}
+\centering
+\caption{Instrument installed as part of the CoSQM network. }
+\label{network}
+\begin{tabular}{lcccc}
+\hline
+Site name & Version & latitude & longitude & elevation \\
+\hline
+Saint-Camille (Canada) & 2 &  45° 44' 4.7" N  &  71° 40' 34.4" W &  526 m \\
+Université de Sherbrooke (Canada) & 1 & 45° 22' 25.9" N & 71° 55' 22.9" W & 372 m \\
+Teide astronomical observatory (Spain)  & 1 &  28° 18' 1.6" N &  16° 30' 43.9" W & 2400 m  \\
+Iza\~na Observatory (Spain) & 1 &  28° 18' 30.8" N &  16° 29' 58.6" W & 2370 m \\
+Pico Teide (Spain) & 1 &  28° 16' 12.9" N &  16° 38' 19.6" W & 3550 m \\
+\textbf{Santa Cruz de Tenerife (Spain)} & 1 &  28° 28' 20.8" N &  16° 14' 50.4" W & 47 m \\
+Universidad Complutense de Madrid (Spain) & 1 & 40° 27' 4.3" N  &   3° 43' 33.7" W & 666 m \\
+Parc Astronomic Montsec (Spain) & 1 &  42° 1' 29.2" N &   0° 44' 12.5" E & 813 m \\
+\hline
+\label{tab:locations}
+\end{tabular}
+\end{table}
+
+
+\subsubsection{AERONET sun and moon photometers}
+
+The sun-sky-moon multi-band photometer CE318-T \citep{Barreto2013,Barreto2016}, manufactured by the company Cimel Electronique, is nowadays the only commercial instrument able to perform day and nighttime photometric measurements using the sun and the moon as light source. The CE318-T is currently the reference instrument in AERONET, together with the old CE318-N standard version \citep{amt-12-169-2019}. The new photometer version provides additional and enhanced operational functionalities compared with the standard CE318-N \citep{holben1998aeronet}, mostly related to the improved tracking precision in terms of a new and more sensitive four quadrant detector in the sensor head and a new control box which uses microstepping technology to improve the pointing resolution. Similarly to the CE318-N, the CE318-T version performs photometric measurements using nine interference filters, with nominal wavelengths centered at 1640, 1020, 937, 870, 675, 500, 440, 380 and 340 nm. Two photodiode detectors allow measurements in the ultraviolet, visible and near infrared spectral range (up to 1020 nm with a silicon detector) and in the near infrared and short-wave infrared (at 1020 and 1640 nm with an InGaAs detector). Photometric measurements performed in the ultraviolet are restricted to daytime period, due to the low signal in the UV channels at night. The approximate field of view of the CE318-T is 1.29$^\circ$. 
+
+Once the feasibility of the Cimel CE318-T photometer to retrieve AOD at nighttime from lunar observations was assessed \citep{Berkoff2011, Barreto2013,Barreto2016,Li2016} a ‘provisional’ lunar AOD product was released in the AERONET website. However, AERONET team recognized the presence of anomalies in the data and they don't recommend its use for scientific publications \citep{problemmoon}.
+
+\subsubsection{Meteorological State Agency of Spain (AEMET) facilities}
+
+Three of the eight CoSQM that form the network described in Table \ref{network} were installed in AEMET facilities. This is the case of the stations at Santa Cruz de Tenerife (28.47$^\circ$N, 16.25$^\circ$W, 52m a.s.l.), Izaña Observatory (28.31$^\circ$N, 16.50$^\circ$W, 2401m a.s.l.) and Pico Teide (28.27$^\circ$N, 16.64$^\circ$W, 3552m a.s.l.), located in Tenerife (Canary Islands, Spain), managed by the Iza\~na Atmospheric Research Centre (IARC)  \citep{iarc}. The subtropical location of this archipelago entails the existence of a strong temperature and moisture inversions in the lower troposphere \citep{Carrillo2016}, modulated by quasi-permanent subsidence conditions at this latitude as a result of the descending  branch of the Hadley-cell. As \citet{Carrillo2016} found, one or two sharp temperature inversions or transition layers below the 700 hPa level can be found in the lower troposphere, limiting the humid and well-mixed marine boundary layer (MBL) to the dry and clean free troposphere (CFT) above. The top of the MBL, as an interface between these two very different air masses, is readily visible by the presence of quasi-permanent stratocumulus clouds frequent at this latitude, which have a critical role preventing the arrival of anthropogenic and light pollution from lower altitudes. Another critical feature of Tenerife is the proximity to the African continent, entailing a strong influence of Saharan desert aerosols in the climatology of the three stations. The archipelago is located within the dust transport mainly in summer, as an elevated dust layer (the Saharan Air Layer or SAL) transported above the MBL at subtropical latitudes with a strong impact on the subtropical free troposphere over the North Atlantic \citep{Rodriguez2011, Rodriguez2015,Cuevas2019}. Sporadic dust outbreaks can also affect the Islands in winter, mostly restricted to lower levels, within the boundary layer \citep{Rodriguez2011,Cuevas2015}.
+
+Santa Cruz de Tenerife Observatory is an urban station located within the MBL close to the city harbour. As a consequence, the aerosol regime at this station is dominated by coarse mode sea-salt aerosols well mixed with fine mode anthropogenic pollution, formed as a mixture of different anthropogenic sources \citep{Gonzalez2011,Basart2009,Milford2020}. Mineral dust particles also influence the aerosol climatology at the station, mainly from spring to autumn \citep{Basart2009} but also in July–August \citep{Milford2020}. As \citet{Rodriguez2008} have found, the urban scale transport of air pollutants in this station is mainly driven by breeze circulation. \citet{Guirado2015} provided a complete aerosol characterization of this site. This author found that the AOD at 500 nm is typically lower than 0.15 and the Angström Exponent calculated using 440-870 nm spectral bands (AE) is lower than 0.5. These maritime clean conditions are observed 60\% of the year.  
+
+Iza\~na and Teide Peak Observatories are two free troposphere stations mainly characterized by clean background conditions, especially at night-time, when the subsidence flow is reinforced. The predominant pristine conditions at the sites explained the historical importance of Izaña as a reference station for in-situ and remote sensing atmospheric measurements, being designated by the WMO as a CIMO test bed for aerosols and water vapour remote-sensing instruments \citep{WMO2014}. The two high-mountain stations can be sporadically affected by dust-loaded Saharan air masses mainly in summer, impacting the subtropical free troposphere \citep{Rodriguez2011, Rodriguez2015,Cuevas2019}. \citet{Guirado2015} performed a detailed aerosol characterization at Izaña, finding that predominant clean background conditions are observed at the station (48\% of the year with AOD at 500 nm below 0.05), while dust conditions can be associated to AOD at 500 nm higher than 0.10 and large particles with AE values lower than 0.60. These contrasting atmospheric conditions allow the methodology presented in this paper to be performed under a wide range of AOD values: from pristine to moderate dust loads.
+
+\subsection{Filtering CoSQM and AERONET data}
+To determine the AOD correlation, data points must be filtered for the presence of undesired sky brightness variation sources so that the remaining variations are solely attributed to AOD. In this work, data filtering was applied to the CoSQM instruments only, followed by the comparison with CE318-T respecting the same filtering. Also, the filtering time is reduced if one assumes the CE381-T instruments are subject to the same sky conditions as the CoSQM. The order in which the different filtering steps are presented is based on the order in which filters are applied in the calculations of the code. The filtering order is optimized to reduce the computing time. Indeed, the cloud filtering sliding window is sensitive to consecutive values and must be done in the first steps before any other filtering is applied (or else filtering artefacts emerge).
+
+\subsubsection{Clouds}
+The presented method uses 3 different successive cloud filtering techniques explained below:
+\begin{enumerate}
+    \item \textbf{Machine learning cloud recognition}: A multi step algorithm has been written to determine the presence of clouds in rpi cam pictures taken at intervals of 15 minutes during daytime on each CoSQM. Based on the works of The combination of a residual network (RESNET) and a cyclic generative adversarial network (CycleGAN) generate a binary picture where clouds are isolated from the background. Simply put, the RESNET+CycleGAN changes the whole original picture through a deep convoluted network to isolate the elements signatures (clouds, background) while finding the specific pixels where each signature is present. The combination returns a product that is tested with an adversarial network compared to 2 tagged sets of image (clouds/no clouds). The confirmation dataset is easily created with rapid human visualisation of a random subset of pictures classified in 2 distinct groups. Following training of the model, all pictures are transformed by the resulting function and a count of the cloud contaminated pixels is made for each picture. Since a picture is taken every 15 minutes, these results inform on cloud density through time. A threshold of cloud density per picture per day is then applied which represents the criterion for the first cloud screening. If 90\% of the data pixels are cloud free both the day before and the day after a night of measurements, all data points for this night are conserved, else removed. This percentage has been determined based on a visual analysis of a 30\% random subset of the entire Santa Cruz de Tenerife picture dataset, where the temporal variance described below was used to evaluate the presence of clouds for these nights. A bigger dataset would help increase this percentage but the necessity for a reasonable amount of data points for the AOD-ZNSB correlation imposed the 90\% value. The results of the algorithm convergence after 30000 epochs are presented in figure \ref{fig:ml_clouds_example}, where the original pictures are first transformed to binary clouds/no clouds pixels and finally an attempt at cloud removal with the same algorithm. This last step is not used in this project but was an interesting attempt at correcting pictures containing clouds. It also serves as a verification tool since if the end picture appears to be cloud free by visual analysis, the cloud detection works.
+    The accuracy of this method has been estimated to 85\% since the standard machine learning evaluation criteria of precision has not been applied to this specific algorithm. This value has been empirically determined by looking at 100 random results and qualifying each one on a scale of 1 (bad) to 5 (good). Further evaluation work on this approach shall show the best and worse conditions of application.
+%    \\
+
+    \item \textbf{Temporal variance}: A sliding window filter of empirically selected width is applied after the above filtering is done. Care must be taken at this step to not be too aggressive on the filtering, else the short and intense events of particle loading are also filtered, such as short Calima events. This is discussed later and represents a challenge considering the small number of data points after all filtering steps are applied. The selected width for Santa Cruz de Tenerife is a 12.5 minutes interval, representing 5 measurements for each color band. This value was chosen as it removed the remaining high variance/low mag values while leaving the known calima events in the dataset, thus adding high AOD values to the correlation function. Since this filtering is applied individually to each night, the first and last measurements of a night are not modified by the nature of the sliding window. This effect was found to be negligible for the correlation results discussed further. A challenge imposed by the instrument is the fact that the 667nm channel shows a variance twice as large as the other channels. As seen in figure \ref{fig:znsb_variance}, CoSQM measurements higher than 19.95 mag show a large variance which does not pass the temporal variance filter. To fix this problem, the filter only treats the clear band measurements (no filter) which offers a higher signal to noise (SNR) ratio. The data points of the other color bands are then filtered for the same moments the clear channel is filtered. We have confirmed that this high variance in the 667nm band is also observed for other color bands when they reach the same 19.95mag value. This confirms that the variance is not a physical phenomenon specifically observed on the 667nm band, but an intrinsic SQM sensor limitation.
+%    \\
+
+    \item \textbf{Visual inspection}:The data points filtered by the temporal variance filter can sometimes leave points that are most probably caused by a quasi-uniform cloud coverage of the entire CoSQM sensor (see figure \ref{fig:ml_clouds_example} for example of such a case). These points are in some cases indistinguishable from clear skies measurements, thus a visual inspection of the sky pictures is needed. These points are first located in time in the entire dataset of CoSQM measurements and the specific images of the pi cam of the associated eve and next day are visually examined and discarded if any of the two show any definitive presence of clouds. A total of 13 nights of measurements was removed following this step, which represents 4\% of the total nights contained in the dataset.
+\end{enumerate}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\columnwidth]{figures/ml_cloud_example2.png}
+    \caption{Machine learning algorithm cloud filtering: A combination of a ResNET and a CycleGAN allow to convert an RPi cam image (top) to a density map of computed cloud presence (middle), which is used to transform the original image in a cloud free version (bottom). Images are analysed the day before and after a night of measurements then CoSQM data is filtered if more than 10\% of images contain clouds.
+    Although not used in this project, the corrected product could help obtain cloud corrected ZNSB data with nighttime images if improved and trained with a bigger dataset.}
+    \label{fig:ml_clouds_example}
+\end{figure}
+
+As described above, cloud filtering steps are first ran with very restrictive parameters to assure the correlated points are as accurate as possible. From there, if the amount of data points is not sufficient, the parameters are loosened to obtain more correlation values.\\
+The filtering applied to the CoSQM also serve as the filtering criteria for the CE381-T data. Indeed, since the AOD measurements are taken by day, the filtered dates for the CoSQM, primarily based on the presence of clouds, are also the same for the CE318-T. It must then be noted that the level 1 aeronet products are used for the CE318-T data since the filtering is already applied on the CoSQM (where level 1 means no filtering applied). The previous choice is valid based on the primary assumption of the project: AOD variations are slow in time and must be the same during dusk and dawn periods for continuity evaluation. This step of filtering left approximately 48\% of the entire CoSQM data points set in Santa Cruz de Tenerife, which indicates the important presence of clouds at this location and the emphasis on the cloud screening techniques used in low elevation sites.\\
+The next generation of the instrument now incorporates a starlight camera, enabling the cloud detection algorithm to run during SQM measurements. This will allows a greater number of valid data points since the actual ML cloud screening discards entire nights of measurements.
+
+\subsubsection{Sliding window filter per color band}
+As mentioned before, the SQM sensor experiences low SNR for high mpsas measurements. To correct for this problem, a second sliding window filter is applied on each band individually for all the dataset. The window duration of 15 minutes (7 measurements) proved to be optimal to reduce the variance while not averaging out the small scale variations. As seen on figure \ref{fig:cosqm_sliding_window}, the measurements above 19.95mpsas suddenly show a high variance compared to the lower values. The figure also shows that the filter adequately corrects for high variance in the 667nm and 571nm bands, as shown in table \ref{tab:variances}
+
+\begin{table}
+\centering
+\caption{CoSQM ZNSB sliding window averaging variances}
+\label{}
+\begin{tabular}{lccccc}
+\hline
+ & Clear (no filter) & 667nm & 571nm & 503nm & 555nm \\
+\hline
+Filtered CoSQM & 0.00130 &  0.0244  &  0.0048 &  0.0023  &  0.001736\\
+Sliding window applied & 0.00129 &  0.0226  &  0.0027 &  0.0022  &  0.001723 \\
+\hline
+\label{tab:variances}
+\end{tabular}
+\end{table}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\columnwidth]{figures/sliding_window_cosqm.png}
+    \caption{Different variance behaviours of the CoSQM filtered and lighting trend corrected data, showing the important difference between high SNR values (blue and yellow bands) and low SNR (red and green bands). Preliminary evaluation of the data showed that such variance is also observed in the 571nm band when the ZNSB goes over 19.95 mpsas. Black symbols represent the data after applying a 15 min sliding average window over each associated color band.}
+    \label{fig:cosqm_sliding_window}
+\end{figure}
+
+\subsubsection{Milky Way}
+Following previous filters, the next contribution to be addressed is the presence of the Milky Way in the instruments field of view. This step comes before the Sun and Moon filtering since it removes more data points, thus reducing the computation time. From an initial analysis of the data, the passage of the milky way in the field of view of the instrument can cause a magnitude reduction of 0.7mpsas. By tracking angle between zenith and the the galactic plane (galactic latitude of zenith) using the Skyfield library and limiting its angle from the zenith at a threshold of 40 degrees, this filtering left 23\% of the total data set in Santa Cruz. Considering the limited amount of data available to achieve the aimed goal, we decided to reduce this constraint to 30 degrees, leaving 29\% of the initial data. The impact of this choice is calculated by taking the average of all data passed through every filtering step, resulting in a mean clear-band sky brightness difference of 0.08mpsas (7.6\%) between the 40 degree case and the 30 degree case. Results were similar for the 4 color bands.
+
+%santa cruz: mean brightness 40deg (5052 points restants sur 111659)-> 18.46683212, 19.38103371, 19.53987867, 19.470471  , 18.69743865
+%30 deg (6441 points restants sur 111659)-> 18.50051159, 19.4729133 , 19.57564648, 19.49800638, 18.72582833
+
+%obs teide: mean brightness 40deg (17127 points restants sur 161323)-> 22.30838313, 22.31824504, 22.35988146, 22.28994576, 22.35672536
+%30 deg (30834 points restants sur 161323)-> 22.27673132, 22.23250629, 22.28670524, 22.23663901, 22.30465715
+
+%izana: mean brightness 40deg (11013 points restants sur 92519)-> 22.376064  , 22.34537623, 22.30894867, 22.30398401, 22.38651857
+%30 deg (13297 points restants sur 161323)-> 22.35862362, 22.31278029, 22.28682515, 22.2915608 , 22.36566652
+
+\subsubsection{Moon}
+After the sun, the moon presence is the second most important light source to be assessed. Following the same process and using the same python library, data points are removed if the moon's elevation angle is lower than -2 degrees. This value has been determined by visual inspection of several night measurement series for different moon illumination percentages. This value is optimized to conserve the most data points while having a moon's brightness contribution to ZNSB as small as possible, in this case in the order of 0.01mag. After this step of filtering, approximately 12\% of the entire data points set is left.
+
+\subsubsection{Twilight}
+The scattering and refraction effects of the sun's rays with the atmosphere near sunset and sunrise increase the sky brightness measured by the CoSQM. The filtering of this contribution is assessed by computing the sun's elevation angle and removing all data points where this angle is lower than -18 degrees (18 degrees below the horizon). The Skyfield python library was used to compute these angles (\citep{skyfield}). This step of the filtering left approximately 8\% of the entire data points set.
+Initial evaluation indicates that this value can be extended up to -15 degrees for all sites located on Tenerife before an important sky brightness variation is measured. It is not yet confirmed if other sites also show this behaviour but this value has been used for the presented results. Figure \ref{organigramme} shows -18 for generality purposes, since this is the most restrictive value, but correlations and further figures use -15 degrees, which left 10\% of the total data.
+
+\subsubsection{Remove recurring temporal trends}
+Since the ZNSB depends greatly on light pollution sources close to the CoSQM site\citep{aubema_asiago} and that scattered light from light fixtures is the principal source of signal, the temporal trends of lighting usage must be determined to correct for variations of sky brightness associated with human activity or light usage. This information can be extracted directly from the CoSQM data if enough data points are considered. To do so, CoSQM data are evaluated individually for ZNSB as a function of time of night for each day of week, week and month of year and season. Variations between intervals are evaluated and the longest satisfying interval is chosen to simplify the relationship, while not overfitting the data. Finally, the nighttime dependent contribution to ZNSB is removed from the filtered data. 
+Following this evaluation, we compute a 3rd order correction per band which is the same for the entire dataset. The ZNSB is first averaged between 1am to 2am local time for each night. Each night is then normalized with this average and a 3rd order function is fitted to the result. Finally, the fitted function is substracted from the ZNSB data as shown on figure \ref{fig:trend_santa_cruz.png}. For these specific data sets, this time interval showed the least variations of ZNSB throughout the nights, hence it was chosen as the reference night sky brightness. This interval may vary between sites, but similar characteristics of the lighting trends would probably be found in near cities since the lighting trends are correlated to populations habits and customs and it is reasonable to assume the darkest moment of the night happens in its middle. This interval is also the most probable to give accurate AOD values since it presents the least anthropogenic variations to ZNSB.
+\begin{figure}
+    \centering
+    \hspace*{0.6in}
+    \begin{subfigure}[b]{0.75\textwidth}
+        \centering
+        \includegraphics[width=1\linewidth]{figures/normalized_cosqm_503.png}
+        \caption{\vspace{2pt}}
+        \label{fig:trend_correction}
+    \end{subfigure}
+    \hspace*{0.1in}
+    \begin{subfigure}[b]{0.75\textwidth}
+        \centering
+        \includegraphics[width=1\linewidth]{figures/correction_single_night_503.png}
+        \caption{\vspace{2pt}}
+        \label{fig:trend_santa_cruz.png}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=0.75\textwidth]{figures/trend_fits.png}
+        \caption{}
+    \label{fig:red_night}
+    \end{subfigure}
+        \caption{(a) Correction of normalized ZNSB showing the entire 503nm band filtered data. Density shows the number of points for each brightness value through the night and the fitted second order night trend. (b) Example of filtered 503nm CoSQM ZNSB and second order correction of the same data based on the entire band dataset for the night of may 23rd, 2020. (c) Comparison of the correction functions for each CoSQM color filter band.}
+        \label{fig:trends}
+\end{figure}
+
+
+***Expliquer pourquoi le rouge a une correction bien plus constante que les autres couleurs (sources du public HPS/PC AMBER plus constantes et continues dans la nuit tout au long de l'année), faire lien avec l'inventaire et lien avec Kyba qui mentionne que le rouge diminue plus que les autres couleurs durant la nuit (red new black).***
+
+\subsection{Fitting the AOD vs sky brightness relationships}
+
+Following the filtering steps, only a fraction of the data can be used to derive a relationship between AOD and ZNSB. Indeed, the AOD variation period needed by the proposed technique is in general 12h which implies that only a subset of the remaining data points are valid correlation candidates, in other words successive night-days are necessary to obtain reasonable results. The chosen method consists of the correlation of an average of AOD values around 5 hours before dawn to an average of ZNSB values around 5 hours after dawn (and inversely for dusk). Following the assumption that AOD variations happen on a bigger time scale than this 10 hours interval limit, the ZNSB measured after dawn with the CoSQM should be correlated to the AOD measured before dawn with the CE318-T and inversely for dusk. This approach is intrinsically optimized for steady-state AOD conditions (i.e. where the AOD changes slowly). A dispersion of the points would be caused by rapid fluctuations of AOD happening close to dusk and dawn which is not desirable. These points must be removed since there is no way to confirm the correlation is in fact valid at these moments in time (AOD changes before the first ZNSB measurements are made, reducing the relation's validity). \\
+Since both instruments do not have the same multispectral responses, the AE extracted from AERONET products is used to derive the AOD for each CoSQM nominal wavelength following equation \ref{eq:angstrom}:
+\begin{equation}
+    \tau_{C} = \tau_{ref} \left( \frac{\lambda_{C}}{\lambda_{ref}}\right) ^{-\alpha}
+    \label{eq:angstrom}
+\end{equation}
+where $\tau_{C}$ is the AOD at the specific bands CoSQM nominal wavelength, $\tau_{ref}$ is the AOD at the specific bands CE318-T central wavelength, $\lambda_{C}$ is the specific bands CoSQM nominal wavelength, $\lambda_{ref}$ is the specific bands CE318-T wavelength and $\alpha$ is the AE from the CE318-T for wavelengths in the range 440-870nm. Since the AE also varies in time, the average of the values is also taken along with the CE318-T AOD measurements and this value is used in the above equation.
+
+
+
+Equation \ref{eq:corr_func} was chosen to fit the correlation AOD - ZNSB . This is based on the fact that the magnitude scale is a function of the logarithm of the brightness of the sky which should be reflected through the AOD dependence. Also, AOD falls to 0 at a finite brightness which is assumed to be the natural brightness and the minimal sky brightness produced by molecules for a given site. Hence, this 0 point will vary between sites that exhibit different lighting conditions. All the most, molecules can also scatter light without aerosol presence which may vary according to the sources of artificial light around the site. It is important to note that the fit function is only valid for a specific interval of ZNSB, which depends on the site for which the fit was obtained. Indeed, the chosen function rapidly decreases towards small AOD values ($<10^-2$) for small ZNSB variations ($0.1$mpsas), often allowed by the low SNR high ZNSB measurements in the 667nm band. Although, the range of sky brightness considered in this approach does not allow such small values to be reached (SB always higher than 17 mag for Santa Cruz de Tenerife). This then implies that the magnitude scale for each site is bounded in respect to the light polluted local site.
+
+\vspace{-1em}
+\begin{align}
+AOD = -a \times log\left(\frac{ZNSB}{b}\right)
+\label{eq:corr_func}
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+
+% section should provide a concise and precise description of the experimental results, their interpretation as well as the experimental conclusions that can be drawn.
+
+
+
+\subsection{AOD - ZNSB correlations}
+The correlation results obtained from the above filtering steps are presented on figure \ref{fig:correlation_santa} for Santa Cruz de Tenerife. This site is chosen among the 4 available for it has the largest amount of usable data points. Rational functions are fitted to the data using a non-linear least squares method. This choice of function was made based on a non-negative AOD value possibility as well as a decreasing AOD value as a function of sky magnitude. As seen on this figure, a distinction exists between dusk and dawn correlation points which could be explained by the humidity level variations throughout the night. Two separate correlation functions have been fitted and compared to a single function, but the latter proved to give better continuity results.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\columnwidth]{figures/correlation_single_fit_santa.png}
+    \caption{AOD-ZNSB correlation between CIMEL CE318-T sun photometer and CoSQM mutlispectral sensor for Santa Cruz de Tenerife location. AM and PM legend specifies the correlated points time interval used for each value. The filtered and averaged data is fitted with equation \ref{eq:corr_func}.}
+    \label{fig:correlation_santa}
+\end{figure}
+
+
+***Expliquer que la résolution du SQM impose que les valeurs déduites AOD de l'ordre de 0.02 présentent 100\% d'erreur, ce qui ne permet pas de conclure. On applique alors un clip sur les données de valeur AOD moindre à 50\% d'erreur (soit AOD 0.04).***
+
+\subsection{Daytime vs nighttime continuity}
+With the obtained correlation functions, the time continuity of AOD can be evaluated for the heavily light polluted case of Santa Cruz de Tenerife. Considering the uncertain validity of the moon photometer derived AOD nightime values from AERONET at the time of writing, these products are not presented. Figure \ref{fig:continuity} shows the results of the continuity for both AOD and AE for the 4 color bands of the CoSQM with equivalent AERONET sunphotometers AOD. The AOD is computed from the ZNSB measurements following the results of figure \ref{fig:correlation_santa} and equation \ref{eq:corr_func} for each band. The AE is then obtained by fitting each set of 4 AOD computed values (each CoSQM measurement yields 1 AOD value for each band) with the definition function of the AE:
+\begin{equation}
+    AOD = K ~ \lambda^{-\alpha}
+\end{equation}
+
+where K is a coefficient representing the product $\tau_{ref} ~ \lambda_{ref}^\alpha$ such as is defined in \ref{eq:angstrom}, $\lambda$ is the CoSQM nominal wavelength and $\alpha$ the fitted AE. From these products, the AE is filtered following two criteria: All negative values are rejected since they do not represent a physical phenomenon and a threshold of 1.4 is imposed based on the standard high values observed at this location in the AERONET products. This serves as a basis for determining which AE values are acceptable from the proposed method. The same AE filtered values are finally used to also filter the AOD computed values, since non-valid AE values indicate non-valid AOD values. 
+
+%Continuity 1
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=\columnwidth]{figures/continuity_aod_20200220.png}
+        \caption{\vspace{2pt}}
+        \label{fig:continuity_aod}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/continuity_angstrom_20200220.png}
+        \caption{\vspace{2pt}}
+        \label{fig:continuity_angstrom}
+    \end{subfigure}
+        \caption{(a) Continuity evaluation of ZNSB derived AOD values compared to AERONET daytime sunphotometer measurements during and after a Calima event.(b) Continuity evaluation of ZNSB derived 514-629nm AE values compared to AERONET 440-675nm daytime sunphotometer measurements.}
+        \label{fig:continuity}
+\end{figure}
+
+%Continuity 2
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=\columnwidth]{figures/continuity_aod_20200521.png}
+        \caption{\vspace{2pt}}
+        \label{fig:continuity_aod}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/continuity_angstrom_20200521.png}
+        \caption{}
+        \label{fig:continuity_angstrom}
+    \end{subfigure}
+        \caption{(a) Continuity evaluation of ZNSB derived AOD values compared to AERONET daytime sunphotometer measurements in typical conditions.(b) Continuity evaluation of ZNSB derived 514-629nm AE values compared to AERONET 440-675nm daytime sunphotometer measurements.}
+        \label{fig:continuity}
+\end{figure}
+
+
+Variance throughout a typical night is shown on figure \ref{fig:variance_aod_ae}, where the method of the extremes is applied to evaluate the uncertainty of AOD throughout a night, here 0.02. The selected night is representative of similar stable state conditions. 
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=1\linewidth]{figures/continuity_aod_20200524_variance.png}
+        \caption{\vspace{2pt}}
+        \label{fig:continuity_angstrom1}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=1\columnwidth]{figures/continuity_angstrom_20200524_variance.png}
+        \caption{}
+        \label{fig:continuity_angstrom2}
+    \end{subfigure}
+        \caption{(a) AOD variance for a steady night. An uncertainty of 0.02mag can be evaluated if the variations are not considered of physical origin. (b) AE for three days around the same day as (a). The negative values show that this product must be used carefully.}
+        \label{fig:variance_aod_ae}
+\end{figure}
+
+
+The dependency of ZNSB as a function of distance for multiple AOD values is shown on figure \ref{fig:aodsensitivity}. It can be seen that in cases where contributing light sources are located either near the observer (<2km) or far from it (>20km), good determination of AOD is possible given the high dynamic range of values. Figure \ref{fig:distance_contribution} then shows the radially integrated contribution maps for AEMET research center of Santa Cruz de Tenerife. As can be seen, 90\% of the light sources contribution is located in a mean radius of $\approx$2.5km and 99\% under $\approx$8km. This indicates that this site is a good candidate for the proposed method.
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.75\textwidth}
+        \centering
+        \includegraphics[width=1\linewidth]{figures/psf_distance_aod.jpg}
+        \caption{\vspace{2pt}}
+        \label{fig:aodsensitivity}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.85\textwidth}
+        \centering
+        \includegraphics[width=1\linewidth]{figures/santa_contrib_relative_log.png}
+        \caption{}
+        \label{fig:distance_contribution}
+    \end{subfigure}
+        \caption{Most important source to the ZNSB-AOD relationship. Panel (a) shows the dependence of relative sky brightness with the distance from sources to observer looking at zenith for different AOD values. The modeled case is for lamps having 5\% Upward Light Output Ratio, a wavelength of 550nm, an AOD of 0.1 and and Angstrom exponent of 1.3. This figures comes from \citep{simoneau2021point}. The figure indicates that the correlation function should better discriminate various AOD for sites having most of their light source either near the CoSQM (<2km) or far (>20km). Panel (b) show the fraction of the ZNSB coming from within a given radius. The plot is for the AEMET location of Santa Cruz de Tenerife for AOD value of 0.13 and AE of 0.6 (representative of the average values for this site in 2020). Calculation were made with Illumina v2 model \citep{aube2020restoring}. Contributions are shown for each simulated wavelength. 90\% of the ZNSB is coming from inside a radius of $\approx$ 2.5 km and 99\% from inside a radius of $\approx$ 8 km.}
+        \label{fig:trends}
+\end{figure}
+
+
+***Comme l'erreur estimée sur nos aod est de +- 0.02 (si ca n'a pas changé). Je ne crois pas qu'on devrait afficher des données de l'ordre de 0.02 car elles ont 100\% d'erreur. Donc tu pourrais enlever toute donnée avec par ex 50\% d'erreur ou plus. Ce qui impliquerait qu'on n'affiche les données d'aod qu'a partir de 0.04. Je pense que ca reglera le comportement de faible aod. Il faudra le dire ceci dans resultats.***
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discussion and conclusion}
+
+The exposed method of AOD determination is shown to be possible for the specific site of Santa Cruz de Tenerife since it is a highly light polluted site and the majority of the contribution of ZNSB from light sources is located inside less than approximately 2.5km, where AOD dynamic range is high (see Figure \ref{fig:aodsensitivity}. This was also made possible since enough data points were remaining after the numerous ZNSB filtering steps, and an apparently realistic correction of the nocturnal lighting trends. The latter is of the upmost importance since it as a direct influence on the***  The precision of the method in this particular case can be evaluated from figure \ref{fig:variance_aod_ae} where the maximum variations are showed to be 0.02 for AOD, and 0.4 for AE (although more analysis on the latter is needed to conclude this value). The high variance of AE can help discriminate the most valid computed CoSQM AOD values. The AOD uncertainty value is based on the worst case scenario since we believe the nocturnal variations to be caused by physical phenomenons, such as relative humidity levels rising as well as human activity decreasing throughout the night . The resolution of the SQM sensor is 0.01 mpsas, which by the correlation function equates to an AOD of 0.005. This shows that the selected sensor is adequate for the proposed method ***citer une source qui dit que le SQM est pas performant?***.
+***Présenter dans un graphique la variance du capteur qui n'est pas seulement dans le rouge, mais bien dans les autres bandes à partir de 19.95mag.***
+
+Also, some nights show small temporal variations and a steady transition from one day to the other, which seems to indicate that the variations observed are not purely random and that the uncertainty would be lower than previously estimated. Finally, the fit function shows high dispersion around small AOD values. This is caused by the filtering parameters to obtain enough data points for the correlation. A higher number of valid measurements would allow to reduce this dispersion and confirm the above assertion. Furthermore, the upcoming version of the instrument will allow short time detection of cloud presence which are considered to affect the presented results. This is thought to be the most influential factor of dispersion of the correlation function.
+The evaluation of the method in the other locations on Tenerife Island (see table \ref{tab:locations}), will be presented in a future work. These sites, along with Pico del Teide, will be addressed in future work. It is not trivial if the method will work well because that an important part of the light for at least Izana and Observatorio del Teide seems to comes froms sources concentrated around a distance of 10 km which is the critical zone with almost no possibility to discriminate AODs as shown in Figure \ref{fig:aodsensitivity}.
+
+Future work will aim to compare AOD results obtained from star photometry to the technique described in this paper. The advantages of this approach rely on the greater precision of the star photometer measurements (0.01 AOD with the 2 star method [citer thèse liviu, 
+%{https://savoirs.usherbrooke.ca/bitstream/handle/11143/17065/Ivanescu_Liviu_PhD_2020.pdf?sequence=12&isAllowed=y}]
+) and the same clear skies conditions for simultaneous data point comparison. This would allow an absolute calibration and the precision of the exposed method could be better determined. Also, a new product from AERONET based on the RCF method giving precise AOD values from moon photometry will be compared to our results. This addition to the continuity evaluation of AOD throughout the years and sites would represent a better basis for correlation since the time interval between an RCF measurement and a CoSQM measurement would be reduced by at least 50\%.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\vspace{6pt} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% optional
+%\supplementary{The following are available online at \linksupplementary{s1}, Figure S1: title, Table S1: title, Video S1: title.}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\authorcontributions{We applied the sequence-determines-credit approach \citep{tscharntke2007author} for the sequence of authors which is in order of decreasing contributions. Conceptualization, M.A. ; methodology, C.M. and M.A. ; software, M.A., C.M., A.S.; validation, M.A., C.M.; formal analysis, M.A., C.M.; investigation, M.A., C.M., A.B.; resources, M.A.,  A.B.; data curation, C.M., M.A., A.S.; writing--original draft preparation, M.A., A.B. and C.M.; writing--review and editing, M.A., C.M.,  A.B., A.S.; visualization, C.M., M.A., A.S.; supervision, M.A.; project administration, M.A.; funding acquisition, M.A.} %% please turn to the  \href{http://img.mdpi.org/data/contributor-role-instruction.pdf}{CRediT taxonomy} for the term explanation.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\funding{M.\,A. and C.\,M.~thanks the Fonds de recherche du Qu\'ebec -- Nature et technologies (FRQNT) for financial support through the Research program for college researchers.}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\acknowledgments{We want to thank Ramon Ramos and Antonio Cruz Martin from AEMET office and Miquel Serra Ricart from Instituto de Astrofisica de Canarias who helped with the installation of the CoSQM units on the Tenerife Island. We also thank Professor Normand T. O'Neill for his educated advice concerning this work.} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\conflictsofinterest{The authors declare no conflict of interest.} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% optional
+\abbreviations{The following abbreviations are used in this manuscript:\\
+
+\noindent 
+\begin{tabular}{ll}
+AEMET & Agencia Estatal de Meteorología \\
+AERONET & AErosol Robotic NETwork \\
+AOD & Aerosol optical depth \\
+CoSQM & Color Sky Quality Meter \\
+FRQNT & Fonds de recherche du Qu\'ebec -- Nature et technologies\\
+GPS & Global Positioning System\\
+LED & Light Emitting Diode\\
+nm & nanometre\\
+UPS & Uninterruptible Power Supply\\
+ZNSB & Zenithal night sky brightness\\
+\end{tabular}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% optional
+%\appendixtitles{no} %Leave argument "no" if all appendix headings stay EMPTY (then no dot is printed after "Appendix A"). If the appendix sections contain a heading then change the argument to "yes".
+%\appendix
+%\section{}
+%\unskip
+%\subsection{}
+
+% appendix sections must be cited in the main text. In the appendixes, Figures, Tables, etc. should be labeled starting with `A', e.g., Figure A1, Figure A2, etc.
+
+
+
+
+%New colors defined below
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+%Code listing style named "mystyle"
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour},   commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,         
+  breaklines=true,                 
+  captionpos=t,                    
+  keepspaces=true,                 
+  numbers=left,                    
+  numbersep=5pt,                  
+  showspaces=false,                
+  showstringspaces=false,
+  showtabs=false,                  
+  tabsize=2
+}
+
+
+
+
+\reftitle{References}
+%=====================================
+% References, variant B: external bibliography
+%=====================================
+\externalbibliography{yes}
+\bibliography{references}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% optional
+%\sampleavailability{Samples of the compounds ...... are available from the authors.}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
