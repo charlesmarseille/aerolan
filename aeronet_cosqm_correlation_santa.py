@@ -398,7 +398,7 @@ weekdays = np.array([ date.weekday() for date in d_local ])
 markers = ['.', '1', '2', '3', '4', 'o', 's']
 
 xs = np.linspace(hours_float.min()-0.5, hours_float.max()+0.5, 1001)
-band = 3
+band = 1
 plt.figure(dpi=150,figsize=(7,4))
 plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno')
 plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno', norm=LogNorm())
