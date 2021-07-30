@@ -121,7 +121,7 @@ eloc = EarthLocation(lat=loc_lat, lon=loc_lon)
 loc_str = 'santa'
 slide_threshold = 0.1
 slide_window_size = 5
-mw_min_angle = 40
+mw_min_angle = 30
 moon_min_angle = -2
 sun_min_angle = -18
 cosqm_window_size = 7
@@ -158,11 +158,17 @@ zeros_mask = (cosqm_santa!=0).all(1)
 cosqm_santa = cosqm_santa[zeros_mask]
 dt_santa = dt_santa[zeros_mask]
 
+#Clouds sliding window filter
+print('Filter: clouds sliding window filter')
+cosqm_santa_cloud = Cloudslidingwindow(cosqm_santa, slide_window_size, slide_threshold)
+dt_santa_cloud = dt_santa[~np.isnan(cosqm_santa_cloud[:,0])]
+
+
 #milky way filter
 print('Filter: milky way angles calculation')
 mw_angles = RaDecGal(dt_santa, eloc)
 mw_mask = mw_angles[:,1]>mw_min_angle
-cosqm_santa_mw = cosqm_santa[mw_mask]
+cosqm_santa_mw = cosqm_santa_cloud[mw_mask]
 dt_santa_mw = dt_santa[mw_mask].reset_index(drop=True)
 
 ## Compute moon angles for each timestamp in COSQM data
@@ -179,20 +185,15 @@ sun_mask = sun_angles<sun_min_angle
 cosqm_santa_sun = cosqm_santa_moon[sun_mask]
 dt_santa_sun = dt_santa_moon[sun_mask].reset_index(drop=True)
 
-#Clouds sliding window filter
-print('Filter: clouds sliding window filter')
-cosqm_santa_sun = Cloudslidingwindow(cosqm_santa_sun, slide_window_size, slide_threshold)
-
-
 # plot filtering
-# band = 3
-# plt.figure(figsize=[7,4], dpi=150)
-# plt.scatter(dt_santa, cosqm_santa[:,band], s=10, label='cosqm_santa')
-# plt.scatter(dt_santa_mw, cosqm_santa_mw[:,band], s=10, alpha=0.5, label='milky way below '+str(mw_min_angle))
-# plt.scatter(dt_santa_moon, cosqm_santa_moon[:,band], s=8, alpha=0.5, label='moon below '+str(moon_min_angle))
-# plt.scatter(dt_santa_sun, cosqm_santa_sun[:,band], s=6, label='sun below '+str(sun_min_angle), c='k')
-# plt.legend(loc=[0,0])
-# plt.ylabel(f'CoSQM {cosqm_bands[band-1]}nm magnitude (mag)')
+band = 3
+plt.figure(figsize=[7,4], dpi=150)
+plt.scatter(dt_santa, cosqm_santa[:,band], s=10, label='cosqm_santa')
+plt.scatter(dt_santa_mw, cosqm_santa_mw[:,band], s=10, alpha=0.5, label='milky way below '+str(mw_min_angle))
+plt.scatter(dt_santa_moon, cosqm_santa_moon[:,band], s=8, alpha=0.5, label='moon below '+str(moon_min_angle))
+plt.scatter(dt_santa_sun, cosqm_santa_sun[:,band], s=6, label='sun below '+str(sun_min_angle), c='k')
+plt.legend(loc=[0,0])
+plt.ylabel(f'CoSQM {cosqm_bands[band-1]}nm magnitude (mag)')
 
 
 #hist2d#
@@ -252,6 +253,22 @@ hours_float_sun[hours_float_sun>12]-=24
 # plt.xlabel('hour')
 # plt.ylabel('CoSQM magnitude')
 
+
+# Make eventplot to graph filtering of dates
+lineoffsets1 = np.array([3, 3, 3, 3, 3])
+linelengths1 = [3, 3, 3, 3, 3]
+dts_event = np.array([dt_santa.values, dt_santa_cloud.values, dt_santa_mw.values, dt_santa_moon.values, dt_santa_sun.values])
+
+sizem = 2
+plt.scatter(dt_santa, 5*np.ones(dt_santa.shape[0]), label='Raw', s=sizem, marker='s')
+plt.scatter(dt_santa_cloud, 4*np.ones(dt_santa_cloud.shape[0]), label='Clouds', s=sizem, marker='s')
+plt.scatter(dt_santa_mw, 3*np.ones(dt_santa_mw.shape[0]), label='Milky Way', s=sizem, marker='s')
+plt.scatter(dt_santa_moon, 2*np.ones(dt_santa_moon.shape[0]), label='Moon', s=sizem, marker='s')
+plt.scatter(dt_santa_sun, np.ones(dt_santa_sun.shape[0]), label='Sun', s=sizem, marker='s')
+plt.tick_params(left=False, labelleft = False )
+plt.xticks(ticks=[pd.Timestamp('2019-09-01'), pd.Timestamp('2020-05-01'), pd.Timestamp('2021-01-01')], labels=['2019-09', '2020-05', '2021-01'])
+plt.legend(loc='upper left')
+plt.savefig('figures/filtering_eventplot.png')
 
 ## set to nan values that are color higher than clear by visual analysis, followed by clouded nights by visual analysis
 print('Remove invalid cosqm data (R channel higher than C), and visual cloud screening')
@@ -613,7 +630,7 @@ for i,day in enumerate(np.unique(dt_aod_date)):
 		angstrom_pm[i] = np.nan
 
 wls1 = np.ones((aod_am.shape[0], 4))*cosqm_bands      # CoSQM center wavelenghts per filter
-wls2 = np.ones((aod_am.shape[0], 4))*np.array([675, 500, 500, 500])     # CE318-T sunphoto center wavelenghts per filter
+wls2 = np.ones((aod_am.shape[0], 4))*np.array([675, 500, 500, 500])     # AERONET daytime sunphoto center wavelenghts per filter
 
 def aod_from_angstrom(aod2, wls1, wls2, alpha):
 	return aod2*(wls1/wls2)**-alpha
@@ -774,7 +791,7 @@ ax[1, 1].text(0.05,0.2, f'{cosqm_bands[3]} nm\na,b = {str(corr_single_round[3])[
 ax[0, 0].set_xlim(16.25,20.6)
 ax[0, 0].legend(loc='center left', prop={'size': 6})
 fig.supxlabel('CoSQM ZNSB (MPSAS)', fontsize=10)
-fig.supylabel('CE318-T AOD', fontsize=10)
+fig.supylabel('AERONET daytime AOD', fontsize=10)
 plt.tight_layout()
 plt.savefig('figures/correlation/santa/correlation_single_fit_santa.png')
 
@@ -783,7 +800,7 @@ plt.savefig('figures/correlation/santa/correlation_single_fit_santa.png')
 msize=1.5
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True, dpi=120, figsize=(12,8))
 plt.setp(ax, xticks=[pd.Timestamp('2020-02-23'), pd.Timestamp('2020-03-02')], xticklabels=['2020-02-23', '2020-03-02'])
-ax[0,0].scatter(dt_aod, data_aod[:,0], s=msize, label='CE318-T')
+ax[0,0].scatter(dt_aod, data_aod[:,0], s=msize, label='AERONET daytime')
 ax[0,0].scatter(dt_santa_corr[ae_mask], cosqm_aod_r[ae_mask], s=msize, label='CoSQM derived AOD')
 ax[0,1].scatter(dt_aod, data_aod[:,1], s=msize)
 ax[0,1].scatter(dt_santa_corr[ae_mask], cosqm_aod_g[ae_mask], s=msize)
@@ -813,7 +830,7 @@ plt.savefig('figures/continuity/continuity_aod_20200220.png')
 #single fit function: continuity Angstrom 2020-02-21
 fig, ax = plt.subplots(1,1, dpi=120, figsize=(10,6))
 plt.setp(ax, xticks=[pd.Timestamp('2020-02-22'), pd.Timestamp('2020-02-27'), pd.Timestamp('2020-03-03')], xticklabels=['2020-02-22', '2020-02-27', '2020-03-03'])
-ax.scatter(dt_aod, data_angstrom, s=1.5, label='CE318-T derived 440-679nm AE')
+ax.scatter(dt_aod, data_angstrom, s=1.5, label='AERONET daytime derived 440-679nm AE')
 ax.scatter(dt_santa_corr[ae_mask], cosqm_ae[:,1][ae_mask], s=1.5, label=f'CoSQM derived fitted AE')
 ax.plot(dt_aod, np.zeros(dt_aod.shape[0]), linewidth=1, linestyle='--', color='grey')
 ax.set_xlim(pd.Timestamp('2020-02-20 16'), pd.Timestamp('2020-03-04'))
@@ -831,7 +848,7 @@ plt.savefig('figures/continuity/continuity_angstrom_20200220.png')
 msize=1.5
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True, dpi=120, figsize=(12,8))
 plt.setp(ax, xticks=[pd.Timestamp('2020-05-23'), pd.Timestamp('2020-05-27')], xticklabels=['2020-05-23', '2020-05-27'])
-ax[0,0].scatter(dt_aod, data_aod[:,0], s=msize, label='CE318-T')
+ax[0,0].scatter(dt_aod, data_aod[:,0], s=msize, label='AERONET daytime')
 ax[0,0].scatter(dt_santa_corr[ae_mask], cosqm_aod_r[ae_mask], s=msize, label='CoSQM derived AOD')
 ax[0,1].scatter(dt_aod, data_aod[:,1], s=msize)
 ax[0,1].scatter(dt_santa_corr[ae_mask], cosqm_aod_g[ae_mask], s=msize)
@@ -859,7 +876,7 @@ plt.savefig('figures/continuity/continuity_aod_20200521.png')
 #single fit function: continuity Angstrom 2020-05-21
 fig, ax = plt.subplots(1,1, dpi=120, figsize=(10,6))
 plt.setp(ax, xticks=[pd.Timestamp('2020-05-22'), pd.Timestamp('2020-05-25'), pd.Timestamp('2020-05-28')], xticklabels=['2020-05-22', '2020-05-25', '2020-05-28'])
-ax.scatter(dt_aod, data_angstrom, s=1.5, label='CE318-T derived 440-679nm AE')
+ax.scatter(dt_aod, data_angstrom, s=1.5, label='AERONET daytime derived 440-679nm AE')
 ax.scatter(dt_santa_corr[ae_mask], cosqm_ae[:,1][ae_mask], s=1.5, label='CoSQM derived fitted AE')
 ax.plot(dt_aod, np.zeros(dt_aod.shape[0]), linewidth=1, linestyle='--', color='grey')
 ax.set_xlim(pd.Timestamp('2020-05-21'), pd.Timestamp('2020-05-29'))
@@ -877,7 +894,7 @@ msize=3
 #single fit function: continuity -> variance for uncertainty
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True, dpi=120, figsize=(12,8))
 plt.setp(ax, xticks=[pd.Timestamp('2020-05-23 17'), pd.Timestamp('2020-05-23 21'), pd.Timestamp('2020-05-24 01'), pd.Timestamp('2020-05-24 05')], xticklabels=['-7', '-3', '1', '5'])
-ax[0,0].scatter(dt_aod, data_aod[:,0], s=msize, label='CE318-T')
+ax[0,0].scatter(dt_aod, data_aod[:,0], s=msize, label='AERONET daytime')
 ax[0,0].scatter(dt_santa_corr, cosqm_aod_r, s=msize, label='CoSQM derived AOD')
 ax[0,1].scatter(dt_aod, data_aod[:,1], s=msize)
 ax[0,1].scatter(dt_santa_corr, cosqm_aod_g, s=msize)
@@ -902,7 +919,7 @@ plt.savefig('figures/continuity/continuity_aod_20200524_variance.png')
 #single fit function: continuity Angstrom -> variance uncertainty
 fig, ax = plt.subplots(1,1, dpi=120, figsize=(10,6))
 plt.setp(ax, xticks=[pd.Timestamp('2020-05-23 17'), pd.Timestamp('2020-05-23 21'), pd.Timestamp('2020-05-24 01'), pd.Timestamp('2020-05-24 05')], xticklabels=['-7', '-3', '1', '5'])
-ax.scatter(dt_aod, data_angstrom, s=msize, label='CE318-T derived 440-679nm AE')
+ax.scatter(dt_aod, data_angstrom, s=msize, label='AERONET daytime derived 440-679nm AE')
 ax.scatter(dt_santa_corr, cosqm_ae[:,1], s=msize, label='CoSQM derived 503-667nm AE')
 ax.plot(dt_aod, np.zeros(dt_aod.shape[0]), linewidth=1, linestyle='--', color='grey')
 ax.set_xlim(pd.Timestamp('2020-05-23 12'), pd.Timestamp('2020-05-24 10'))
@@ -914,3 +931,32 @@ fig.supxlabel('Time from midnight - UTC (h)', fontsize=10)
 fig.supylabel('Angstrom exponent', fontsize=10)
 plt.tight_layout()
 plt.savefig('figures/continuity/continuity_angstrom_20200524_variance.png')
+
+#ZNSB for the same night
+fig, ax = plt.subplots(1,1, dpi=120, figsize=(10,6))
+plt.setp(ax, xticks=[pd.Timestamp('2020-05-23 22'), pd.Timestamp('2020-05-23 23'), pd.Timestamp('2020-05-24 00'), pd.Timestamp('2020-05-24 01')], xticklabels=['-2', '-1', '0', '1'])
+for i in range(4):
+	ax.scatter(dt_santa_final, cosqm_santa_final[:, i+1], s=msize, label=f'{cosqm_bands[i]} nm')
+ax.set_xlim(pd.Timestamp('2020-05-23 21'), pd.Timestamp('2020-05-24 02'))
+ax.set_ylim(18.5,20.35)
+ax.legend(prop={"size":10})
+ax.xaxis.set_minor_locator(MultipleLocator(1))
+fig.supxlabel('Time from midnight - UTC (h)', fontsize=10)
+fig.supylabel('ZNSB (MPSAS)', fontsize=10)
+plt.tight_layout()
+plt.savefig('figures/continuity/ZNSB_20200523.png')
+
+#Raw ZNSB for the same night
+fig, ax = plt.subplots(1,1, dpi=120, figsize=(10,6))
+plt.setp(ax, xticks=[pd.Timestamp('2020-05-23 22'), pd.Timestamp('2020-05-23 23'), pd.Timestamp('2020-05-24 00'), pd.Timestamp('2020-05-24 01')], xticklabels=['-2', '-1', '0', '1'])
+for i in range(4):
+	ax.scatter(dt_santa, cosqm_santa[:, i+1], s=msize, c=colors[i], label=f'{cosqm_bands[i]} nm')
+ax.set_xlim(pd.Timestamp('2020-05-23 21'), pd.Timestamp('2020-05-24 02'))
+ax.set_ylim(18.5,20.35)
+ax.legend(prop={"size":10})
+ax.xaxis.set_minor_locator(MultipleLocator(1))
+fig.supxlabel('Time from midnight - UTC (h)', fontsize=10)
+fig.supylabel('ZNSB (MPSAS)', fontsize=10)
+plt.tight_layout()
+plt.savefig('figures/continuity/ZNSB_raw_20200523.png')
+
