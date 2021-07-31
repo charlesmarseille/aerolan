@@ -16,6 +16,7 @@ from astropy.time import Time
 import pytz
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 
+
 #%matplotlib
 
 ##############################################################################
@@ -162,14 +163,14 @@ dt_santa = dt_santa[zeros_mask]
 print('Filter: clouds sliding window filter')
 cosqm_santa_cloud = Cloudslidingwindow(cosqm_santa, slide_window_size, slide_threshold)
 dt_santa_cloud = dt_santa[~np.isnan(cosqm_santa_cloud[:,0])]
-
+cosqm_santa_cloud = cosqm_santa_cloud[~np.isnan(cosqm_santa_cloud[:,0])]
 
 #milky way filter
 print('Filter: milky way angles calculation')
-mw_angles = RaDecGal(dt_santa, eloc)
+mw_angles = RaDecGal(dt_santa_cloud, eloc)
 mw_mask = mw_angles[:,1]>mw_min_angle
 cosqm_santa_mw = cosqm_santa_cloud[mw_mask]
-dt_santa_mw = dt_santa[mw_mask].reset_index(drop=True)
+dt_santa_mw = dt_santa_cloud[mw_mask].reset_index(drop=True)
 
 ## Compute moon angles for each timestamp in COSQM data
 print('Filter: moon angles calculation')
@@ -253,22 +254,69 @@ hours_float_sun[hours_float_sun>12]-=24
 # plt.xlabel('hour')
 # plt.ylabel('CoSQM magnitude')
 
+dts_event = np.array([dt_santa.dt.date, dt_santa_cloud.dt.date, dt_santa_mw.dt.date, dt_santa_moon.dt.date, dt_santa_sun.dt.date])
 
-# Make eventplot to graph filtering of dates
-lineoffsets1 = np.array([3, 3, 3, 3, 3])
-linelengths1 = [3, 3, 3, 3, 3]
-dts_event = np.array([dt_santa.values, dt_santa_cloud.values, dt_santa_mw.values, dt_santa_moon.values, dt_santa_sun.values])
 
-sizem = 2
-plt.scatter(dt_santa, 5*np.ones(dt_santa.shape[0]), label='Raw', s=sizem, marker='s')
-plt.scatter(dt_santa_cloud, 4*np.ones(dt_santa_cloud.shape[0]), label='Clouds', s=sizem, marker='s')
-plt.scatter(dt_santa_mw, 3*np.ones(dt_santa_mw.shape[0]), label='Milky Way', s=sizem, marker='s')
-plt.scatter(dt_santa_moon, 2*np.ones(dt_santa_moon.shape[0]), label='Moon', s=sizem, marker='s')
-plt.scatter(dt_santa_sun, np.ones(dt_santa_sun.shape[0]), label='Sun', s=sizem, marker='s')
-plt.tick_params(left=False, labelleft = False )
-plt.xticks(ticks=[pd.Timestamp('2019-09-01'), pd.Timestamp('2020-05-01'), pd.Timestamp('2021-01-01')], labels=['2019-09', '2020-05', '2021-01'])
-plt.legend(loc='upper left')
+fsize=10
+sizem = 1
+fig,ax = plt.subplots(figsize=(12,8), dpi=120)
+ax.scatter(np.unique(dt_santa), 5*np.ones(np.unique(dt_santa).shape[0]), label='Raw', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_santa_cloud), 4*np.ones(np.unique(dt_santa_cloud).shape[0]), label='Clouds', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_santa_mw), 3*np.ones(np.unique(dt_santa_mw).shape[0]), label='Milky Way', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_santa_moon), 2*np.ones(np.unique(dt_santa_moon).shape[0]), label='Moon', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_santa_sun), np.ones(np.unique(dt_santa_sun).shape[0]), label='Sun', s=sizem, marker='s', alpha=0.5)
+ax.set_yticks([])
+ax.set_xticks([pd.Timestamp('2019-08-27'), pd.Timestamp('2020-05-01'), pd.Timestamp('2021-01-04')])
+ax.set_xticklabels(['2019-09', '2020-05', '2021-01'])
+ax.xaxis.set_minor_locator(MultipleLocator(31))
+ax.xaxis.grid(ls='--', lw='0.5', which='both')
+ax.set_ylim(0.8, 5.5)
+ax.text(pd.Timestamp('2019-09-01'), 5+0.2, 'Raw', fontsize=fsize)
+ax.text(pd.Timestamp('2019-09-01'), 4+0.2, 'Clouds removed', fontsize=fsize)
+ax.text(pd.Timestamp('2019-09-01'), 3+0.2, 'Milky Way removed', fontsize=fsize)
+ax.text(pd.Timestamp('2019-09-01'), 2+0.2, 'Moon removed', fontsize=fsize)
+ax.text(pd.Timestamp('2019-09-01'), 1+0.2, 'Sun removed', fontsize=fsize)
 plt.savefig('figures/filtering_eventplot.png')
+
+
+
+
+# # Make eventplot to graph filtering of dates
+# lineoffsets1 = np.array([3, 6, 9, 12, 15])
+# linelengths1 = np.ones(5)*2
+
+# sizem = 2
+# fsize = 7
+# dts = np.array([pd.Timestamp(date).timestamp() for date in dt_santa.dt.date])
+# dts_cloud = np.copy(dts)
+# dts_cloud[np.isnan(cosqm_santa_cloud[:,0])] = False
+# dts_mw = np.copy(dts)
+# dts_mw[~mw_mask] = np.nan
+# dts_moon = np.copy(dts)
+# dts_moon[mw_mask][~moon_mask] = np.nan
+# dts_sun = np.copy(dts)
+# dts_sun[mw_mask][moon_mask][~sun_mask] = np.nan
+
+# dts_event = np.vstack((dts,dts_cloud,dts_mw,dts_moon,dts_sun))
+# fig, ax = plt.subplots(figsize=(12,8), dpi=150)
+# ax.eventplot(dts_event, colors=['r', 'g', 'b', 'y', 'k'], orientation='horizontal', lineoffsets=lineoffsets1, linelengths=linelengths1, linewidths=0.1)
+# ax.set_xlim(pd.Timestamp('2019-08-27').timestamp()-3600*24, pd.Timestamp('2021-01-04').timestamp()+3600*24)
+# ax.set_ylim(0,20)
+# ax.tick_params(left=False, labelleft = False )
+# ax.set_xticks([pd.Timestamp('2019-08-27').timestamp(), pd.Timestamp('2020-05-01').timestamp(), pd.Timestamp('2021-01-04').timestamp()])
+# ax.set_xticklabels(['2019-09', '2020-05', '2021-01']) 
+# #ax.legend(loc=(pd.Timestamp('2019-08-27').timestamp(), 3.5), prop={'size': 6})
+# ax.set_ylim(0.9,5.5)
+# #ax.xaxis.set_minor_locator(MultipleLocator(31*24*1627660252))
+# ax.xaxis.grid(linestyle = '--', linewidth = 0.5, which='both')
+# ax.text(pd.Timestamp('2019-08-27').timestamp(), 5+0.2, 'Raw', fontsize=fsize )
+# ax.text(pd.Timestamp('2019-08-27').timestamp(), 4+0.2, 'Clouds removed', fontsize=fsize )
+# ax.text(pd.Timestamp('2019-08-27').timestamp(), 3+0.2, 'Milky Way removed', fontsize=fsize )
+# ax.text(pd.Timestamp('2019-08-27').timestamp(), 2+0.2, 'Moon removed', fontsize=fsize )
+# ax.text(pd.Timestamp('2019-08-27').timestamp(), 1+0.2, 'Sun removed', fontsize=fsize )
+# plt.savefig('figures/filtering_eventplot.png')
+
+
 
 ## set to nan values that are color higher than clear by visual analysis, followed by clouded nights by visual analysis
 print('Remove invalid cosqm data (R channel higher than C), and visual cloud screening')
@@ -765,20 +813,20 @@ ae_mask = (cosqm_ae[:,1]>ae_min) & (cosqm_ae[:,1]<=ae_max)
 #single fit function: correlation
 xs = np.arange(16,21,0.01)
 fig, ax = plt.subplots(2,2, sharex=True, sharey=True, figsize=(13,9), dpi=120)
-ax[0, 0].scatter(cosqm_am[:,1], aod_am[:,0], label='dusk')
 ax[0, 0].scatter(cosqm_pm[:,1], aod_pm[:,0], label='dawn')
+ax[0, 0].scatter(cosqm_am[:,1], aod_am[:,0], label='dusk')
 ax[0, 0].plot(xs, fit_func1(xs, corr_fitr))
 ax[0, 0].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
-ax[0, 1].scatter(cosqm_am[:,2], aod_am[:,1])
 ax[0, 1].scatter(cosqm_pm[:,2], aod_pm[:,1])
+ax[0, 1].scatter(cosqm_am[:,2], aod_am[:,1])
 ax[0, 1].plot(xs, fit_func1(xs, corr_fitg))
 ax[0, 1].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
-ax[1, 0].scatter(cosqm_am[:,3], aod_am[:,2])                                
 ax[1, 0].scatter(cosqm_pm[:,3], aod_pm[:,2])
+ax[1, 0].scatter(cosqm_am[:,3], aod_am[:,2])
 ax[1, 0].plot(xs, fit_func1(xs, corr_fitb))
 ax[1, 0].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
-ax[1, 1].scatter(cosqm_am[:,4], aod_am[:,3])
 ax[1, 1].scatter(cosqm_pm[:,4], aod_pm[:,3])
+ax[1, 1].scatter(cosqm_am[:,4], aod_am[:,3])
 ax[1, 1].plot(xs, fit_func1(xs, corr_fity))
 ax[1, 1].plot(xs, xs*0, linestyle='--', linewidth=0.5, c='k')
 ax[0, 0].set_xlim(16.29,21.1)
@@ -794,6 +842,22 @@ fig.supxlabel('CoSQM ZNSB (MPSAS)', fontsize=10)
 fig.supylabel('AERONET daytime AOD', fontsize=10)
 plt.tight_layout()
 plt.savefig('figures/correlation/santa/correlation_single_fit_santa.png')
+
+
+# Relative humidity data
+msize = 5
+hr = pd.read_csv('hr_2020.dat').values
+hr[:,1] = np.around(hr[:,1].astype(float), decimals=0)
+hr[:,3] = np.around(hr[:,3].astype(float), decimals=0)
+fig,ax = plt.subplots(figsize=(12,8), dpi=120)
+plt.hist(hr[:,1], bins=np.unique(hr[:,1]),  label='Mean (Dawn)', alpha=0.8)
+plt.hist(hr[:,3], bins=np.unique(hr[:,3]), label='Mean (Dusk)', alpha=0.8)
+plt.legend(loc='upper left', prop={'size': 6})
+plt.xlabel('Relative humidity (%)')
+plt.ylabel('Counts')
+plt.tight_layout()
+plt.savefig('figures/continuity/hr_2020.png')
+
 
 
 #single fit function: continuity 2020-02-21
