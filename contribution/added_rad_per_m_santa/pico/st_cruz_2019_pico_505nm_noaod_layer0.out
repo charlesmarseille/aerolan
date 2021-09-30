@@ -1,0 +1,738 @@
+ ILLUMINA version 2.1.21w21.1a
+ FILE USED:
+ st_cruz_2019_pico_topogra.bin                                           aerosol.txt                                                             
+ Wavelength (nm):   505.000000      Aerosol optical depth:   0.00000000    
+ 2nd order scattering radius:   40000.0000      m
+ Observer position (x,y,z)         256         256   10.0000000    
+ Elevation angle:   90.0000000      azim angle (counterclockwfrom east)   90.0000000    
+ Width of the domain [NS](m):   25550.0000     #cases:         511
+ Width of the domain [EO](m):   25550.0000     #cases:         511
+ Size of a cell (m):   50.0000000      X    50.0000000    
+ latitu center:   0.00000000    
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ ========================    =====================
+  Progression along the line of sight :           1
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   9.50000000      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   0.00000000    
+ Radiance accumulated =   0.00000000    
+ ========================    =====================
+  Progression along the line of sight :           2
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   29.6398926      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   2.50692022E-14
+ Radiance accumulated =   2.50692022E-14
+ ========================    =====================
+  Progression along the line of sight :           3
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   52.1967773      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   3.13329718E-14
+ Radiance accumulated =   5.64021757E-14
+ ========================    =====================
+  Progression along the line of sight :           4
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   77.4604492      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   3.82925266E-14
+ Radiance accumulated =   9.46947056E-14
+ ========================    =====================
+  Progression along the line of sight :           5
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   105.755615      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   4.89422278E-14
+ Radiance accumulated =   1.43636933E-13
+ ========================    =====================
+  Progression along the line of sight :           6
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   137.446289      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   6.06436288E-14
+ Radiance accumulated =   2.04280576E-13
+ ========================    =====================
+  Progression along the line of sight :           7
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   172.939941      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   7.47653282E-14
+ Radiance accumulated =   2.79045884E-13
+ ========================    =====================
+  Progression along the line of sight :           8
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   212.692627      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   9.22448153E-14
+ Radiance accumulated =   3.71290672E-13
+ ========================    =====================
+  Progression along the line of sight :           9
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   257.215820      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   1.15694861E-13
+ Radiance accumulated =   4.86985560E-13
+ ========================    =====================
+  Progression along the line of sight :          10
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   307.081787      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   1.48833528E-13
+ Radiance accumulated =   6.35819088E-13
+ ========================    =====================
+  Progression along the line of sight :          11
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   362.931641      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   1.74658018E-13
+ Radiance accumulated =   8.10477119E-13
+ ========================    =====================
+  Progression along the line of sight :          12
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   425.483398      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   2.03018185E-13
+ Radiance accumulated =   1.01349528E-12
+ ========================    =====================
+  Progression along the line of sight :          13
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   495.541504      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   2.33990236E-13
+ Radiance accumulated =   1.24748540E-12
+ ========================    =====================
+  Progression along the line of sight :          14
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   574.006348      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   2.68017352E-13
+ Radiance accumulated =   1.51550278E-12
+ ========================    =====================
+  Progression along the line of sight :          15
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   661.887207      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   3.04612130E-13
+ Radiance accumulated =   1.82011481E-12
+ ========================    =====================
+  Progression along the line of sight :          16
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   760.313477      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   3.43749850E-13
+ Radiance accumulated =   2.16386501E-12
+ ========================    =====================
+  Progression along the line of sight :          17
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   870.551270      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   3.83189005E-13
+ Radiance accumulated =   2.54705393E-12
+ ========================    =====================
+  Progression along the line of sight :          18
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   994.017578      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   4.29008608E-13
+ Radiance accumulated =   2.97606232E-12
+ ========================    =====================
+  Progression along the line of sight :          19
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   1132.29980      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   4.70809643E-13
+ Radiance accumulated =   3.44687191E-12
+ ========================    =====================
+  Progression along the line of sight :          20
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   1287.17578      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   5.11192976E-13
+ Radiance accumulated =   3.95806521E-12
+ ========================    =====================
+  Progression along the line of sight :          21
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   1460.63672      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   5.49770732E-13
+ Radiance accumulated =   4.50783594E-12
+ ========================    =====================
+  Progression along the line of sight :          22
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   1654.91309      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   5.90081044E-13
+ Radiance accumulated =   5.09791731E-12
+ ========================    =====================
+  Progression along the line of sight :          23
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   1872.50244      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   6.21479485E-13
+ Radiance accumulated =   5.71939631E-12
+ ========================    =====================
+  Progression along the line of sight :          24
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   2116.20264      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   6.56763543E-13
+ Radiance accumulated =   6.37616002E-12
+ ========================    =====================
+  Progression along the line of sight :          25
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   2389.14697      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   6.87073011E-13
+ Radiance accumulated =   7.06323324E-12
+ ========================    =====================
+  Progression along the line of sight :          26
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   2694.84473      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   7.16134237E-13
+ Radiance accumulated =   7.77936743E-12
+ ========================    =====================
+  Progression along the line of sight :          27
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   3037.22607      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   7.36967345E-13
+ Radiance accumulated =   8.51633434E-12
+ ========================    =====================
+  Progression along the line of sight :          28
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   3420.69336      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   7.51219670E-13
+ Radiance accumulated =   9.26755374E-12
+ ========================    =====================
+  Progression along the line of sight :          29
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   3850.17676      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   7.55805249E-13
+ Radiance accumulated =   1.00233597E-11
+ ========================    =====================
+  Progression along the line of sight :          30
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   4331.19775      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   7.44255460E-13
+ Radiance accumulated =   1.07676151E-11
+ ========================    =====================
+  Progression along the line of sight :          31
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   4869.94141      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   7.23814238E-13
+ Radiance accumulated =   1.14914285E-11
+ ========================    =====================
+  Progression along the line of sight :          32
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   5473.33398      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   6.95269580E-13
+ Radiance accumulated =   1.21866987E-11
+ ========================    =====================
+  Progression along the line of sight :          33
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   6149.13379      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   6.49337138E-13
+ Radiance accumulated =   1.28360361E-11
+ ========================    =====================
+  Progression along the line of sight :          34
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   6906.03027      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   5.96225001E-13
+ Radiance accumulated =   1.34322605E-11
+ ========================    =====================
+  Progression along the line of sight :          35
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   7753.75391      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   5.36535389E-13
+ Radiance accumulated =   1.39687957E-11
+ ========================    =====================
+  Progression along the line of sight :          36
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   8703.20410      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   4.69434658E-13
+ Radiance accumulated =   1.44382301E-11
+ ========================    =====================
+  Progression along the line of sight :          37
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   9766.58887      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   3.99656192E-13
+ Radiance accumulated =   1.48378861E-11
+ ========================    =====================
+  Progression along the line of sight :          38
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   10957.5791      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   3.35859758E-13
+ Radiance accumulated =   1.51737459E-11
+ ========================    =====================
+  Progression along the line of sight :          39
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   12291.4883      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   2.67009993E-13
+ Radiance accumulated =   1.54407563E-11
+ ========================    =====================
+  Progression along the line of sight :          40
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   13785.4668      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   2.07721373E-13
+ Radiance accumulated =   1.56484790E-11
+ ========================    =====================
+  Progression along the line of sight :          41
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   15458.7227      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   1.58582471E-13
+ Radiance accumulated =   1.58070623E-11
+ ========================    =====================
+  Progression along the line of sight :          42
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   17332.7695      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   1.15202254E-13
+ Radiance accumulated =   1.59222635E-11
+ ========================    =====================
+  Progression along the line of sight :          43
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   19431.7012      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   8.61200624E-14
+ Radiance accumulated =   1.60083839E-11
+ ========================    =====================
+  Progression along the line of sight :          44
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   21782.5059      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   5.60208957E-14
+ Radiance accumulated =   1.60644033E-11
+ ========================    =====================
+  Progression along the line of sight :          45
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   24415.4062      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   3.85122435E-14
+ Radiance accumulated =   1.61029159E-11
+ ========================    =====================
+  Progression along the line of sight :          46
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   27364.2559      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   2.35208700E-14
+ Radiance accumulated =   1.61264370E-11
+ ========================    =====================
+  Progression along the line of sight :          47
+  Horizontal dist. line of sight =   0.00000000      m
+  Vertical dist. line of sight =   30480.0195      m
+  Turning on lamps           1
+  Turning on lamps           2
+  Turning on lamps           3
+  Turning on lamps           4
+  Turning on lamps           5
+  Turning on lamps           6
+  Turning on lamps           7
+  Turning on lamps          11
+  Turning on lamps          12
+ Added radiance =   1.28435360E-14
+ Radiance accumulated =   1.61392809E-11
+ ===================================================
+      Direct irradiance from sources (W/m**2/nm)
+                    0.000E+00
+      Direct irradiance from reflexion (W/m**2/nm)
+                    0.000E+00
+      Direct radiance from sources (W/str/m**2/nm)
+                    0.000E+00
+      Direct radiance from reflexion (W/str/m**2/nm)
+                    0.000E+00
+            Cloud radiance (W/str/m**2/nm)         
+                    0.000E+00
+          Diffuse radiance (W/str/m**2/nm)          
+                    0.161E-10
