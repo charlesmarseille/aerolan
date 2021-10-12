@@ -29,8 +29,9 @@ def LoadData(path,cache={}):
 		return cache[path]
 	else:
 		try:
-			data = pd.read_csv(path, delimiter=';', names=['utc', 'local_time', 'temp', 'volt', 'mpsas'], header=37)
-			data['Datetime'] = pd.to_datetime(data['Date']+'T'+data['Time'], utc=True)        
+			data = pd.read_csv(path, delimiter=';', names=['utc', 'local_time', 'temp', 'volt', 'mpsas', 'meas_type'], header=37)
+			data.utc = pd.to_datetime(data.utc, utc=True)
+			data.local_time = pd.to_datetime(data.local_time, utc=False)
 			cache[path] = data
 			return data
 		except:
@@ -94,7 +95,7 @@ eph = load('de421.bsp')
 
 ## Define variables for locations
 izana_loc = earth + Topos('28.300398N', '16.512252W')
-site_loc = earth + Topos('45.377505557984975N', '71.90920834543029W')
+bell_loc = earth + Topos('45.377505557984975N', '71.90920834543029W')
 
 ## !! Time objects from dt need a timezone (aware dt object) to work with skyfield lib
 ## ex.: time = dt.now(timezone.utc), with an import of datetime.timezone
@@ -123,17 +124,17 @@ def ObjectAngle(dt_array, object, location):
 
 #######
 ## Variables
-path_sqm='sqm_bellevue/data/'
+path_sqm='data/'
 sqm_bands = np.array([652, 599, 532, 588])
 bands = ['clear', 'red', 'green', 'blue', 'yellow']
 
-loc = site_loc
+loc = bell_loc
 loc_lat = 45.377505557984975
 loc_lon = -71.90920834543029
 eloc = EarthLocation(lat=loc_lat, lon=loc_lon)
 loc_str = 'bellevue'
 slide_threshold = 0.1
-slide_window_size = 5
+slide_window_size = 15
 mw_min_angle = 30
 moon_min_angle = -2
 sun_min_angle = -18
@@ -146,67 +147,176 @@ normalized_sqm_znsb_threshold = 1.8
 print('Load sqm data')
 paths_sqm = sorted(glob(path_sqm+"*.dat"))
 files = pd.concat([LoadData(path) for path in paths_sqm], ignore_index=True)
-sqm_site = files[['Sqm0', 'Sqm1', 'Sqm2', 'Sqm3', 'Sqm4']].values
-dt_site_raw = files['Datetime']
+sqm_bell = np.array([files.mpsas, files.mpsas]).T
+sqm_bell_raw = sqm_bell.copy()
+dt_bell_raw = files.utc
+dt_local_raw = files.local_time
 
 #remove non datetime errors in sqm files (NaT)
-sqm_site = sqm_site[~pd.isnull(dt_site_raw)]
-dt_site = dt_site_raw[~pd.isnull(dt_site_raw)]
+sqm_bell = sqm_bell[~pd.isnull(dt_bell_raw)]
+dt_bell = dt_bell_raw[~pd.isnull(dt_bell_raw)]
+dt_local = dt_local_raw[~pd.isnull(dt_bell_raw)]
+
 
 ## Remove zeros from sqm measurements (bugs from instruments)
 print('Cleaning: remove zeros from sqm measurements')
-zeros_mask = (sqm_site!=0).all(1)
-sqm_site = sqm_site[zeros_mask]
-dt_site = dt_site[zeros_mask]
-
-#Clouds sliding window filter
-print('Filter: clouds sliding window filter')
-sqm_site_cloud = Cloudslidingwindow(sqm_site, slide_window_size, slide_threshold)
-dt_site_cloud = dt_site[~np.isnan(sqm_site_cloud[:,0])]
-sqm_site_cloud = sqm_site_cloud[~np.isnan(sqm_site_cloud[:,0])]
+zeros_mask = (sqm_bell!=0).all(1)
+sqm_bell = sqm_bell[zeros_mask]
+dt_bell = dt_bell[zeros_mask]
+dt_local = dt_local[zeros_mask]
 
 #milky way filter
 print('Filter: milky way angles calculation')
-mw_angles = RaDecGal(dt_site_cloud, eloc)
+mw_angles = RaDecGal(dt_bell, eloc)
 mw_mask = mw_angles[:,1]>mw_min_angle
-sqm_site_mw = sqm_site_cloud[mw_mask]
-dt_site_mw = dt_site_cloud[mw_mask].reset_index(drop=True)
+sqm_bell_mw = sqm_bell[mw_mask]
+dt_bell_mw = dt_bell[mw_mask].reset_index(drop=True)
+dt_local_mw = dt_local[mw_mask].reset_index(drop=True)
 
 ## Compute moon angles for each timestamp in sqm data
 print('Filter: moon angles calculation')
-moon_angles = ObjectAngle(dt_site_mw, moon, loc)
+moon_angles = ObjectAngle(dt_bell_mw, moon, loc)
 moon_mask = moon_angles<moon_min_angle
-sqm_site_moon = sqm_site_mw[moon_mask]
-dt_site_moon = dt_site_mw[moon_mask].reset_index(drop=True)
+sqm_bell_moon = sqm_bell_mw[moon_mask]
+dt_bell_moon = dt_bell_mw[moon_mask].reset_index(drop=True)
+dt_local_moon = dt_local_mw[moon_mask].reset_index(drop=True)
 
 ## Compute sun angles for each timestamp in sqm data
 print('Filter: sun_angles calculation')
-sun_angles = ObjectAngle(dt_site_moon, sun, site_loc)
+sun_angles = ObjectAngle(dt_bell_moon, sun, bell_loc)
 sun_mask = sun_angles<sun_min_angle
-sqm_site_sun = sqm_site_moon[sun_mask]
-dt_site_sun = dt_site_moon[sun_mask].reset_index(drop=True)
+sqm_bell_sun = sqm_bell[sun_mask]
+dt_bell_sun = dt_bell[sun_mask].reset_index(drop=True)
+dt_local_sun = dt_local[sun_mask].reset_index(drop=True)
+
+#Clouds sliding window filter
+print('Filter: clouds sliding window filter')
+sqm_bell_cloud = Cloudslidingwindow(sqm_bell_sun, slide_window_size, slide_threshold)
+dt_bell_cloud = dt_bell_sun[~np.isnan(sqm_bell_cloud[:,0])]
+dt_local_cloud = dt_local_sun[~np.isnan(sqm_bell_cloud[:,0])]
+sqm_bell_cloud = sqm_bell_cloud[~np.isnan(sqm_bell_cloud[:,0])]
 
 # plot filtering
-band = 3
-plt.figure(figsize=[7,4], dpi=150)
-plt.scatter(dt_site, sqm_site[:,band], s=10, label='sqm_site')
-plt.scatter(dt_site_mw, sqm_site_mw[:,band], s=10, alpha=0.5, label='milky way below '+str(mw_min_angle))
-plt.scatter(dt_site_moon, sqm_site_moon[:,band], s=8, alpha=0.5, label='moon below '+str(moon_min_angle))
-plt.scatter(dt_site_sun, sqm_site_sun[:,band], s=6, label='sun below '+str(sun_min_angle), c='k')
+print('make filtering plot')
+band = 0
+plt.figure(figsize=[14,11], dpi=200)
+plt.scatter(dt_local, sqm_bell[:,band], s=10, label='Raw SQM data')
+plt.scatter(dt_local_mw, sqm_bell_mw[:,band], c='r', s=10, label='milky way below '+str(mw_min_angle))
+plt.scatter(dt_local_moon, sqm_bell_moon[:,band], c='m', s=8, label='moon below '+str(moon_min_angle))
+plt.scatter(dt_local_sun, sqm_bell_sun[:,band], c='y', s=6, label='sun below '+str(sun_min_angle))
+plt.scatter(dt_local_cloud, sqm_bell_cloud[:,band], c='k', s=10, label='cloud screening')
 plt.legend(loc=[0,0])
-plt.ylabel(f'sqm {sqm_bands[band-1]}nm magnitude (mag)')
+plt.ylabel('sqm magnitude (MPSAS)')
+plt.xlabel('Local date and time')
+plt.tight_layout()
+#plt.savefig('sqm_bellevue/all_data.png')
+
+
+plt.figure(figsize=[14,11], dpi=200)
+plt.scatter(dt_local, sqm_bell[:,band], s=10, label='Raw SQM data')
+plt.scatter(dt_local_mw, sqm_bell_mw[:,band], c='r', s=10, label='milky way below '+str(mw_min_angle))
+plt.scatter(dt_local_moon, sqm_bell_moon[:,band], c='m', s=8, label='moon below '+str(moon_min_angle))
+plt.scatter(dt_local_sun, sqm_bell_sun[:,band], c='y', s=6, label='sun below '+str(sun_min_angle))
+plt.scatter(dt_local_cloud, sqm_bell_cloud[:,band], c='k', s=10, label='cloud screening')
+plt.ylim(15.5, 19.3)
+plt.xlim(pd.Timestamp('2021-04-13 16:00'), pd.Timestamp('2021-04-15 08:00'))
+plt.legend(loc=[0,0])
+plt.ylabel('sqm magnitude (MPSAS)')
+plt.xlabel('Local date and time')
+plt.tight_layout()
+#plt.savefig('sqm_bellevue/zoom_filtering.png')
+
+
+day=14
+datestr = '04/%s/21' %str(day)
+datestr1 = '02/%s/21' %str(day+1)
+
+sun_angles = ObjectAngle(dt_bell_moon, sun, bell_loc)
+sun_mask_0 = sun_angles<0
+dt_local_sun0 = dt_local[sun_mask_0].reset_index(drop=True)
+dates0 = np.array([dt.strftime(val.date(), format='%D') for val in dt_local_sun0])
+hours0 = np.array([val.hour for val in dt_local_sun0])
+dt_sun0 = dt_local_sun0[(dates0 == datestr) & (hours0 > 12)].reset_index(drop=True)[0]
+print(dt_sun0)
+
+sun_mask = sun_angles<-18
+dt_local_sun = dt_local[sun_mask].reset_index(drop=True)
+dates = np.array([dt.strftime(val.date(), format='%D') for val in dt_local_sun])
+hours = np.array([val.hour for val in dt_local_sun])
+try:
+	dt_sun = dt_local_sun[(dates == datestr) & (hours > 12)].reset_index(drop=True)[0]
+except:
+	dt_sun = dt_local_sun[(dates == datestr1) & (hours <12)].reset_index(drop=True)[0]
+print(dt_sun)
+
+moon_angles = ObjectAngle(dt_bell, moon, loc)
+moon_mask = moon_angles<-18
+dt_local_moon = dt_local[moon_mask].reset_index(drop=True)
+dates = np.array([dt.strftime(val.date(), format='%D') for val in dt_local_moon])
+hours = np.array([val.hour for val in dt_local_moon])
+dt_moon = dt_local_moon[(dates == datestr) & (hours > 12)].reset_index(drop=True)[0]
+print(dt_moon)
+
+plt.figure(figsize=[14,11], dpi=200)
+plt.scatter(dt_local_raw+td(hours=1), sqm_bell_raw[:,band], s=1, label='Raw SQM data')
+#plt.plot(dt_local_raw, sqm_bell_raw[:,band], linewidth=0.1, label='Raw SQM data')
+plt.axvline(dt_sun0+td(hours=1), linestyle='--', c='r', linewidth=0.6, label='Sun below horizon')
+plt.axvline(dt_sun+td(hours=1), linestyle='--', c='k', linewidth=0.6, label='Sun 18$^{\circ}$ below horizon')
+plt.axvline(dt_moon+td(hours=1), linestyle='--', c='purple', linewidth=0.6, label='Moon 18$^{\circ}$ below horizon')
+plt.ylim(5, 20)
+plt.xlim(pd.Timestamp('2021-04-14 19:00'), pd.Timestamp('2021-04-15 06:15'))
+plt.legend(loc='lower right')
+plt.ylabel('sqm magnitude (MPSAS)')
+plt.xlabel('Local date and time')
+plt.tight_layout()
+plt.savefig('raw_night.png')
+
+
+plt.figure(figsize=[14,11], dpi=200)
+plt.scatter(dt_local_raw+td(hours=1), sqm_bell_raw[:,band], s=1, label='Raw SQM data')
+#plt.plot(dt_local_raw, sqm_bell_raw[:,band], linewidth=0.1, label='Raw SQM data')
+plt.axvline(dt_sun0+td(hours=1), linestyle='--', c='r', linewidth=0.6, label='Sun below horizon')
+plt.axvline(dt_sun+td(hours=1), linestyle='--', c='k', linewidth=0.6, label='Sun 18$^{\circ}$ below horizon')
+plt.axvline(dt_moon+td(hours=1), linestyle='--', c='purple', linewidth=0.6, label='Moon 18$^{\circ}$ below horizon')
+plt.ylim(5, 20)
+plt.xlim(pd.Timestamp('2021-04-14 19:00'), pd.Timestamp('2021-04-15 06:15'))
+plt.legend(loc='upper right')
+plt.ylabel('sqm magnitude (MPSAS)')
+plt.xlabel('Local date and time')
+plt.gca().invert_yaxis()
+plt.tight_layout()
+plt.savefig('raw_night_invert.png')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #hist2d#
 #raw without clouds
 hours_float_raw = np.array([ date.hour+                    #WATCH OUT FOR TIMEZONE HERE!
 	date.minute/60+
-	date.second/3600 for date in dt_site ])
+	date.second/3600 for date in dt_bell ])
 hours_float_raw[hours_float_raw>12]-=24
 
 # plt.figure(figsize=[12,8])
-# plt.hist2d(hours_float_raw, sqm_site[:,1], 200, cmap='inferno')
-# plt.hist2d(hours_float_raw, sqm_site[:,1], 200, cmap='inferno', norm=LogNorm())
+# plt.hist2d(hours_float_raw, sqm_bell[:,1], 200, cmap='inferno')
+# plt.hist2d(hours_float_raw, sqm_bell[:,1], 200, cmap='inferno', norm=LogNorm())
 # plt.ylim(15,21)
 # plt.title('ZNSB - no filter - clear')
 # plt.xlabel('hour')
@@ -215,12 +325,12 @@ hours_float_raw[hours_float_raw>12]-=24
 #clouds filter
 hours_float_diff = np.array([ date.hour+                    #WATCH OUT FOR TIMEZONE HERE!
 	date.minute/60+
-	date.second/3600 for date in dt_site ])
+	date.second/3600 for date in dt_bell ])
 hours_float_diff[hours_float_diff>12]-=24
 
 #plt.figure(figsize=[12,8])
-#plt.hist2d(hours_float_diff[np.isfinite(sqm_site_diff)[:,0]], sqm_site_diff[:,0][np.isfinite(sqm_site_diff)[:,0]], 200, cmap='inferno')
-#plt.hist2d(hours_float_diff[np.isfinite(sqm_site_diff)[:,0]], sqm_site_diff[:,0][np.isfinite(sqm_site_diff)[:,0]], 200, cmap='inferno', norm=LogNorm())
+#plt.hist2d(hours_float_diff[np.isfinite(sqm_bell_diff)[:,0]], sqm_bell_diff[:,0][np.isfinite(sqm_bell_diff)[:,0]], 200, cmap='inferno')
+#plt.hist2d(hours_float_diff[np.isfinite(sqm_bell_diff)[:,0]], sqm_bell_diff[:,0][np.isfinite(sqm_bell_diff)[:,0]], 200, cmap='inferno', norm=LogNorm())
 #plt.ylim(15,21)
 #plt.title('ZNSB - filter: clouds+variance - clear')
 #plt.xlabel('hour')
@@ -229,12 +339,12 @@ hours_float_diff[hours_float_diff>12]-=24
 #moon filter
 hours_float_moon = np.array([ date.hour+                    #WATCH OUT FOR TIMEZONE HERE!
 	date.minute/60+
-	date.second/3600 for date in dt_site_moon ])
+	date.second/3600 for date in dt_bell_moon ])
 hours_float_moon[hours_float_moon>12]-=24
 
 # plt.figure(figsize=[12,8])
-# plt.hist2d(hours_float_moon[np.isfinite(sqm_site_moon)[:,0]], sqm_site_moon[:,0][np.isfinite(sqm_site_moon)[:,0]], 200, cmap='inferno')
-# plt.hist2d(hours_float_moon[np.isfinite(sqm_site_moon)[:,0]], sqm_site_moon[:,0][np.isfinite(sqm_site_moon)[:,0]], 200, cmap='inferno', norm=LogNorm())
+# plt.hist2d(hours_float_moon[np.isfinite(sqm_bell_moon)[:,0]], sqm_bell_moon[:,0][np.isfinite(sqm_bell_moon)[:,0]], 200, cmap='inferno')
+# plt.hist2d(hours_float_moon[np.isfinite(sqm_bell_moon)[:,0]], sqm_bell_moon[:,0][np.isfinite(sqm_bell_moon)[:,0]], 200, cmap='inferno', norm=LogNorm())
 # plt.ylim(15,21)
 # plt.title('ZNSB - filter: moon - clear')
 # plt.xlabel('hour')
@@ -243,28 +353,28 @@ hours_float_moon[hours_float_moon>12]-=24
 #sun filter
 hours_float_sun = np.array([ date.hour+                    #WATCH OUT FOR TIMEZONE HERE!
 	date.minute/60+
-	date.second/3600 for date in dt_site_sun ])
+	date.second/3600 for date in dt_bell_sun ])
 hours_float_sun[hours_float_sun>12]-=24
 
 # plt.figure(figsize=[12,8])
-# plt.hist2d(hours_float_sun[np.isfinite(sqm_site_sun)[:,1]], sqm_site_sun[:,1][np.isfinite(sqm_site_sun)[:,1]], 200, cmap='inferno')
-# plt.hist2d(hours_float_sun[np.isfinite(sqm_site_sun)[:,1]], sqm_site_sun[:,1][np.isfinite(sqm_site_sun)[:,1]], 200, cmap='inferno', norm=LogNorm())
+# plt.hist2d(hours_float_sun[np.isfinite(sqm_bell_sun)[:,1]], sqm_bell_sun[:,1][np.isfinite(sqm_bell_sun)[:,1]], 200, cmap='inferno')
+# plt.hist2d(hours_float_sun[np.isfinite(sqm_bell_sun)[:,1]], sqm_bell_sun[:,1][np.isfinite(sqm_bell_sun)[:,1]], 200, cmap='inferno', norm=LogNorm())
 # plt.ylim(15,21)
 # plt.title('ZNSB - filter: sun - clear')
 # plt.xlabel('hour')
 # plt.ylabel('sqm magnitude')
 
-dts_event = np.array([dt_site.dt.date, dt_site_cloud.dt.date, dt_site_mw.dt.date, dt_site_moon.dt.date, dt_site_sun.dt.date])
+dts_event = np.array([dt_bell.dt.date, dt_bell_cloud.dt.date, dt_bell_mw.dt.date, dt_bell_moon.dt.date, dt_bell_sun.dt.date])
 
 
 fsize=10
 sizem = 1
 fig,ax = plt.subplots(figsize=(7,4), dpi=150)
-ax.scatter(np.unique(dt_site), 5*np.ones(np.unique(dt_site).shape[0]), label='Raw', s=sizem, marker='s', alpha=0.5)
-ax.scatter(np.unique(dt_site_cloud), 4*np.ones(np.unique(dt_site_cloud).shape[0]), label='Clouds', s=sizem, marker='s', alpha=0.5)
-ax.scatter(np.unique(dt_site_mw), 3*np.ones(np.unique(dt_site_mw).shape[0]), label='Milky Way', s=sizem, marker='s', alpha=0.5)
-ax.scatter(np.unique(dt_site_moon), 2*np.ones(np.unique(dt_site_moon).shape[0]), label='Moon', s=sizem, marker='s', alpha=0.5)
-ax.scatter(np.unique(dt_site_sun), np.ones(np.unique(dt_site_sun).shape[0]), label='Sun', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_bell), 5*np.ones(np.unique(dt_bell).shape[0]), label='Raw', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_bell_cloud), 4*np.ones(np.unique(dt_bell_cloud).shape[0]), label='Clouds', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_bell_mw), 3*np.ones(np.unique(dt_bell_mw).shape[0]), label='Milky Way', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_bell_moon), 2*np.ones(np.unique(dt_bell_moon).shape[0]), label='Moon', s=sizem, marker='s', alpha=0.5)
+ax.scatter(np.unique(dt_bell_sun), np.ones(np.unique(dt_bell_sun).shape[0]), label='Sun', s=sizem, marker='s', alpha=0.5)
 ax.set_yticks([])
 ax.set_xticks([pd.Timestamp('2019-08-27'), pd.Timestamp('2020-05-01'), pd.Timestamp('2021-01-04')])
 ax.set_xticklabels(['2019-09', '2020-05', '2021-01'])
@@ -287,9 +397,9 @@ plt.savefig('figures/filtering_eventplot.png')
 
 # sizem = 2
 # fsize = 7
-# dts = np.array([pd.Timestamp(date).timestamp() for date in dt_site.dt.date])
+# dts = np.array([pd.Timestamp(date).timestamp() for date in dt_bell.dt.date])
 # dts_cloud = np.copy(dts)
-# dts_cloud[np.isnan(sqm_site_cloud[:,0])] = False
+# dts_cloud[np.isnan(sqm_bell_cloud[:,0])] = False
 # dts_mw = np.copy(dts)
 # dts_mw[~mw_mask] = np.nan
 # dts_moon = np.copy(dts)
@@ -337,15 +447,15 @@ dates_color_str = np.array(['2019-06-12', '2019-06-13', '2019-06-26',
 					'2020-12-03', '2020-12-04', '2020-12-07', '2020-12-08', '2020-12-09', '2020-12-10', '2020-12-12', '2020-12-13', '2020-12-15', '2020-12-16', '2020-12-17', '2020-12-18', '2020-12-19', '2020-12-20', '2020-12-21', '2020-12-22', '2020-12-23', '2020-12-24', '2020-12-25',
 					'2021-01-13', '2021-01-14', '2021-01-15', '2021-01-16', '2021-01-17'])
 
-dates_sqm_str = np.array([dt.strftime(date, '%Y-%m-%d') for date in dt_site_sun])
+dates_sqm_str = np.array([dt.strftime(date, '%Y-%m-%d') for date in dt_bell_sun])
 dates_color_mask = np.ones(dates_sqm_str.shape[0], dtype=bool)
 dates_color_mask[np.isin(dates_sqm_str, dates_color_str)] = False
 
-dt_site_sun = dt_site_sun[dates_color_mask]
-sqm_site_sun = sqm_site_sun[dates_color_mask]
-sqm_site_sun_unfiltered = np.copy(sqm_site_sun)
+dt_bell_sun = dt_bell_sun[dates_color_mask]
+sqm_bell_sun = sqm_bell_sun[dates_color_mask]
+sqm_bell_sun_unfiltered = np.copy(sqm_bell_sun)
 
-d = np.copy(dt_site_sun)
+d = np.copy(dt_bell_sun)
 
 ddays_sqm = np.array([(date.date()-d[0].date()).days for date in d])
 hours = np.array([date.hour for date in d])
@@ -363,8 +473,8 @@ def Sliding_window_sqm(data_array, window_size):
 		dd = np.insert(dd, dd.shape[0], padd, axis=0)      	      #append nan to end to get same shape as input
 	return dd
 
-sqm_site_sun = Sliding_window_sqm(sqm_site_sun, sqm_window_size)
-np.savetxt('sqm_filtered_site.csv', np.array([dt_site_sun[~np.isnan(sqm_site_sun[:,0])], sqm_site_sun[:,0][~np.isnan(sqm_site_sun[:,0])], sqm_site_sun[:,1][~np.isnan(sqm_site_sun[:,0])], sqm_site_sun[:,2][~np.isnan(sqm_site_sun[:,0])], sqm_site_sun[:,3][~np.isnan(sqm_site_sun[:,0])], sqm_site_sun[:,4][~np.isnan(sqm_site_sun[:,0])]]).T, fmt="%s")
+sqm_bell_sun = Sliding_window_sqm(sqm_bell_sun, sqm_window_size)
+np.savetxt('sqm_filtered_bell.csv', np.array([dt_bell_sun[~np.isnan(sqm_bell_sun[:,0])], sqm_bell_sun[:,0][~np.isnan(sqm_bell_sun[:,0])], sqm_bell_sun[:,1][~np.isnan(sqm_bell_sun[:,0])], sqm_bell_sun[:,2][~np.isnan(sqm_bell_sun[:,0])], sqm_bell_sun[:,3][~np.isnan(sqm_bell_sun[:,0])], sqm_bell_sun[:,4][~np.isnan(sqm_bell_sun[:,0])]]).T, fmt="%s")
 
 
 #print('remove artefact from sliding window filter ZNSB')
@@ -373,12 +483,12 @@ for day in np.unique(ddays_sqm):
 	d_mask[(ddays_sqm == day) & (hours < 12)] = True
 	d_mask[(ddays_sqm == day-1) & (hours > 12)] = True 
 	try:
-		sqm_site_sun[np.where(d_mask==True)[0][0]] = np.nan
+		sqm_bell_sun[np.where(d_mask==True)[0][0]] = np.nan
 	except:
 		print('0', day)
 		pass
 	try:
-		sqm_site_sun[np.where(d_mask==True)[0][-1]] = np.nan
+		sqm_bell_sun[np.where(d_mask==True)[0][-1]] = np.nan
 	except:
 		print('-1', day)
 		pass
@@ -387,8 +497,8 @@ for day in np.unique(ddays_sqm):
 colors=['r', 'g', 'b', 'y']
 plt.figure(dpi=150, figsize=(7,4))
 for i in (0,2):
-	plt.scatter(dt_site_sun, sqm_site_sun_unfiltered[:,i+1], c=colors[i], s=8, label=f'{sqm_bands[i]}nm')
-	plt.scatter(dt_site_sun, sqm_site_sun[:,i+1], c='k', marker='+', s=8)
+	plt.scatter(dt_bell_sun, sqm_bell_sun_unfiltered[:,i+1], c=colors[i], s=8, label=f'{sqm_bands[i]}nm')
+	plt.scatter(dt_bell_sun, sqm_bell_sun[:,i+1], c='k', marker='+', s=8)
 plt.xlabel('Time of measurement (UTC)')
 plt.ylabel('sqm ZNSB (MPSAS)')
 plt.ylim(19.6)
@@ -399,6 +509,6 @@ plt.tight_layout()
 plt.savefig('figures/sliding_window_sqm.png')
 
 #Find variance before and after sqm sliding window 
-#inds = np.where((dt_site_date.values == pd.Timestamp('2020-01-24')) | (dt_site_date.values == pd.Timestamp('2020-01-25')))[0]
-#sqm_site_sun_unfiltered_var = np.nanvar(sqm_site_sun_unfiltered[inds], axis=0)
-#sqm_site_sun_var = np.nanvar(sqm_site_sun[inds], axis=0)
+#inds = np.where((dt_bell_date.values == pd.Timestamp('2020-01-24')) | (dt_bell_date.values == pd.Timestamp('2020-01-25')))[0]
+#sqm_bell_sun_unfiltered_var = np.nanvar(sqm_bell_sun_unfiltered[inds], axis=0)
+#sqm_bell_sun_var = np.nanvar(sqm_bell_sun[inds], axis=0)
