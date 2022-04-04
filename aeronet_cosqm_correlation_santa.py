@@ -523,7 +523,7 @@ band = 1
 plt.figure(dpi=150,figsize=(7,4))
 plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno')
 #plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno', norm=LogNorm(), vmax=10)
-plt.plot(xs, third_order(xs, *fit_params[:, band]), label=f'third order fit {cosqm_bands[band-1]}nm', c='c')
+#plt.plot(xs, third_order(xs, *fit_params[:, band]), label=f'third order fit {cosqm_bands[band-1]}nm', c='c')
 plt.plot(xs, third_order(xs, *fit_params_weight[:,band]), label=f'third order weighted fit {cosqm_bands[band-1]}nm', c='w', linestyle='--')
 plt.xlabel('Local time from midnight (h)')
 plt.ylabel(f'Normalized {cosqm_bands[band-1]}nm ZNSB (MPSAS)')
@@ -533,13 +533,13 @@ cbar = plt.colorbar(label='counts')
 #cbar.update_ticks()
 #cbar.set_ticklabels(np.arange(0,11,1))
 plt.tight_layout()
-#plt.savefig(f'figures/trend/normalized_cosqm_{cosqm_bands[band-1]}.png')
+plt.savefig(f'figures/trend/normalized_cosqm_{cosqm_bands[band-1]}.png')
 
 xs = np.linspace(hours_float.min()-0.5, hours_float.max()+0.5, 1001)
 band = 3
 plt.figure(dpi=150,figsize=(7,4))
 plt.hist2d(hours_float[np.isfinite(c_norm)[:,band]], c_norm[:,band][np.isfinite(c_norm)[:,band]], 80, cmap='inferno')
-plt.plot(xs, third_order(xs, fit_params[0, band], fit_params[1, band], fit_params[2, band], fit_params[3, band]), label='third order fit 644nm', c='c')
+#plt.plot(xs, third_order(xs, fit_params[0, band], fit_params[1, band], fit_params[2, band], fit_params[3, band]), label='third order fit 644nm', c='c')
 plt.plot(xs, third_order(xs, fit_params_weight[0, band], fit_params_weight[1, band], fit_params_weight[2, band], fit_params_weight[3, band]), label='third order weighted fit 644nm', c='w', linestyle='--')
 plt.xlabel('Local time from midnight (h)')
 plt.ylabel(f'Normalized {cosqm_bands[band-1]}nm ZNSB (MPSAS)')
@@ -549,7 +549,7 @@ cbar = plt.colorbar(label='counts')
 #cbar.update_ticks()
 #cbar.set_ticklabels(np.arange(0,11,1))
 plt.tight_layout()
-#plt.savefig(f'figures/trend/normalized_cosqm_{cosqm_bands[band-1]}.png')
+plt.savefig(f'figures/trend/normalized_cosqm_{cosqm_bands[band-1]}.png')
 
 # Correct filtered data with fit curve
 print('Correct filtered data with trend fits')
@@ -880,7 +880,7 @@ cosqm_aod_y = fit_func1(cosqm_santa_corr[:,3], corr_fity)
 # cosqm_ae = np.array([(fit1, fit2) for fit1, fit2 in ae_fit_params])
 
 
-cosqm_ae = angstrom_from_aod(np.array([cosqm_aod_r, cosqm_aod_b]).T, cosqm_bands, 0, 1)
+cosqm_ae = angstrom_from_aod(np.array([cosqm_aod_r, cosqm_aod_b]).T, cosqm_bands, 0, 2)
 
 
 
@@ -923,7 +923,7 @@ ax[0].legend(loc='center left', prop={'size': 10})
 fig.supxlabel('CoSQM ZNSB (MPSAS)', fontsize=10)
 fig.supylabel('AERONET daytime AOD', fontsize=10)
 plt.tight_layout()
-plt.savefig('figures/correlation/santa/correlation_single_fit_santa.png')
+#plt.savefig('figures/correlation/santa/correlation_single_fit_santa.png')
 
 
 # Relative humidity data
@@ -938,7 +938,7 @@ plt.legend(loc='upper left', prop={'size': 9})
 plt.xlabel('Relative humidity (%)')
 plt.ylabel('Counts')
 plt.tight_layout()
-plt.savefig('figures/continuity/hr_2020.png')
+#plt.savefig('figures/continuity/hr_2020.png')
 
 
 #single fit function: continuity 2020-02-21
@@ -960,7 +960,7 @@ ax[1].text(0.35,0.1, f'{cosqm_bands[2]} nm', horizontalalignment='center', verti
 fig.supxlabel('Time (UTC)', fontsize=10)
 fig.supylabel('AOD', fontsize=10)
 plt.tight_layout()
-plt.savefig('figures/continuity/continuity_aod_20200220.png')
+#plt.savefig('figures/continuity/continuity_aod_20200220.png')
 
 
 #single fit function: continuity Angstrom 2020-02-21
@@ -977,7 +977,7 @@ ax.legend(prop={"size":10})
 ax.xaxis.set_minor_locator(MultipleLocator(1))
 #ax.set_yscale('log')
 plt.tight_layout()
-plt.savefig('figures/continuity/continuity_angstrom_20200220.png')
+#plt.savefig('figures/continuity/continuity_angstrom_20200220.png')
 
 
 # Import Lidar data from AERONET on may 2020 (Africa provided the data)
@@ -1006,7 +1006,7 @@ ax[1].xaxis.set_minor_locator(MultipleLocator(1))
 fig.supxlabel('Time (UTC)', fontsize=10)
 fig.supylabel('AOD', fontsize=10)
 plt.tight_layout()
-plt.savefig('figures/continuity/continuity_aod_20200521.png')
+#plt.savefig('figures/continuity/continuity_aod_20200521.png')
 
 
 #single fit function: continuity Angstrom 2020-05-21
@@ -1023,7 +1023,7 @@ ax.legend(prop={"size":10})
 ax.xaxis.set_minor_locator(MultipleLocator(1))
 #ax.set_yscale('log')
 plt.tight_layout()
-plt.savefig('figures/continuity/continuity_angstrom_20200521.png')
+#plt.savefig('figures/continuity/continuity_angstrom_20200521.png')
 
 # Import Lidar data from AERONET on july 2020 (Africa provided the data)
 mpl_july = pd.read_csv('wetransfer_lidar_data_2021-09-06_0658/aod_sco_july_2020.dat', delimiter=' ', skiprows=2, names=('Date', 'Time', 'aod'))[:-1]
@@ -1049,7 +1049,7 @@ ax[1].text(0.1,0.3, f'{cosqm_bands[2]} nm', horizontalalignment='center', vertic
 fig.supxlabel('Time (UTC)', fontsize=10)
 fig.supylabel('AOD', fontsize=10)
 plt.tight_layout()
-plt.savefig('figures/continuity/continuity_aod_20200707.png')
+#plt.savefig('figures/continuity/continuity_aod_20200707.png')
 
 
 #single fit function: continuity Angstrom 2020-07-07
@@ -1066,7 +1066,7 @@ ax.legend(prop={"size":10})
 ax.xaxis.set_minor_locator(MultipleLocator(1))
 #ax.set_yscale('log')
 plt.tight_layout()
-plt.savefig('figures/continuity/continuity_angstrom_20200707.png')
+#plt.savefig('figures/continuity/continuity_angstrom_20200707.png')
 
 
 msize=3
@@ -1086,14 +1086,14 @@ ax[1].text(0.5,0.10, f'{cosqm_bands[2]} nm', horizontalalignment='center', verti
 fig.supxlabel('Time from midnight - UTC (h)', fontsize=10)
 fig.supylabel('AOD', fontsize=10)
 plt.tight_layout()
-plt.savefig('figures/continuity/continuity_aod_20200524_variance.png')
+#plt.savefig('figures/continuity/continuity_aod_20200524_variance.png')
 
 
 #single fit function: continuity Angstrom -> variance uncertainty
 fig, ax = plt.subplots(1,1, dpi=200, figsize=(8,6))
 plt.setp(ax, xticks=[pd.Timestamp('2020-05-23 17'), pd.Timestamp('2020-05-23 21'), pd.Timestamp('2020-05-24 01'), pd.Timestamp('2020-05-24 05')], xticklabels=['-7', '-3', '1', '5'])
 ax.scatter(dt_aod, data_angstrom, s=msize, label='AERONET daytime derived 440-679nm AE')
-ax.scatter(dt_santa_corr, cosqm_ae[:,1], s=msize, label='CoSQM derived 544-644nm AE')
+ax.scatter(dt_santa_corr, cosqm_ae, s=msize, label=f'CoSQM derived {cosqm_bands[0]}-{cosqm_bands[2]}nm AE')
 ax.plot(dt_aod, np.zeros(dt_aod.shape[0]), linewidth=1, linestyle='--', color='grey')
 ax.set_xlim(pd.Timestamp('2020-05-23 12'), pd.Timestamp('2020-05-24 10'))
 ax.set_ylim(-0.73,0.54)
@@ -1121,7 +1121,7 @@ ax.set_ylabel('ZNSB (MPSAS)', fontsize=10)
 ax.legend(prop={"size":8}, bbox_to_anchor=(0.25, 0.2))
 ax.xaxis.set_minor_locator(MultipleLocator(1))
 plt.tight_layout()
-plt.savefig('figures/continuity/ZNSB_20200523.png')
+#plt.savefig('figures/continuity/ZNSB_20200523.png')
 
 
 # COSQM spectral responses: weighted mean of response by spectral functions of local lamp technologies (HPS, LED, MH)
@@ -1145,7 +1145,7 @@ plt.ylabel('Normalized spectral signal\n in 4 CoSQM bands')
 plt.xlim(400,975)
 plt.ylim(0)
 plt.tight_layout()
-plt.savefig('figures/spectra/cosqm_spectral_response_weighted.png')
+#plt.savefig('figures/spectra/cosqm_spectral_response_weighted.png')
 
 plt.figure(figsize=(6,3.5))
 plt.plot(cosqm_responses['WL'], cr_led[:,0], c='r', linewidth=linewidth, label='red')
@@ -1159,7 +1159,7 @@ plt.ylabel('Normalized spectral signal\n in 4 CoSQM bands')
 plt.xlim(400,975)
 plt.ylim(0)
 plt.tight_layout()
-plt.savefig('figures/spectra/cosqm_spectral_response_weighted_LED.png')
+#plt.savefig('figures/spectra/cosqm_spectral_response_weighted_LED.png')
 
 plt.figure(figsize=(6,3.5))
 plt.plot(cosqm_responses['WL'], sky, linewidth=linewidth, label='HPS+MH+LED')
@@ -1171,4 +1171,4 @@ plt.ylabel('Normalized spectral power\n distribution of the sky ')
 plt.xlim(400,975)
 plt.ylim(0)
 plt.tight_layout()
-plt.savefig('figures/spectra/simulated_sky_spectrum.png')
+#plt.savefig('figures/spectra/simulated_sky_spectrum.png')
